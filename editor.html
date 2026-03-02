@@ -575,6 +575,8 @@
 
       // Load image; wire pixel-inspector and pointer events after image is ready
       loadPlaceholderImage().then(() => {
+        // Save initial state as history[0] so undo can return to it
+        pushHistory();
         // ── Pixel Inspector (reads EditorState.pixels — never canvas) ─────────
         cursorCanvas.addEventListener('pointermove', e => {
           if (!EditorState.pixels) return;
@@ -608,7 +610,6 @@
       cursorCanvas.addEventListener('pointerdown', function _scaffoldClick(e) {
         e.preventDefault();
         if (!EditorState.pixels) return;
-        pushHistory();
         const r = Math.floor(Math.random() * 256);
         const g = Math.floor(Math.random() * 256);
         const b = Math.floor(Math.random() * 256);
@@ -619,6 +620,7 @@
           EditorState.pixels[i+3] = 255;
         }
         flushPixels();
+        pushHistory(); // save AFTER change ("save-after" model: history[n] = state after op n)
       });
       // ── END TEMP SCAFFOLD ────────────────────────────────────────────────────
 
