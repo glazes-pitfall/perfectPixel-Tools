@@ -103,7 +103,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENTRY-01 | Phase 7 | Pending |
 | UI-01 | Phase 1 | Pending |
 | UI-02 | Phase 1 | Pending |
-| UI-03 | Phase 4 | Pending |
+| UI-03 | Phase 7 | Pending |
 | CANVAS-01 | Phase 1 | Pending |
 | CANVAS-02 | Phase 1 | Pending |
 | CANVAS-03 | Phase 7 | Pending |
@@ -139,8 +139,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 **Coverage:**
 - v1 requirements: 33 total
 - Mapped to phases: 33
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-02 after initial definition*
+*Last updated: 2026-03-02 — traceability finalized after roadmap creation*
