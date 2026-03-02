@@ -193,6 +193,16 @@
       margin: 2px 0;
     }
     .tool-btn-active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    /* ── Top-bar tool settings inputs ────────────────────────────────────────── */
+    #top-bar input[type=number], #top-bar select {
+      padding: 3px 6px; border-radius: 5px;
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text); font-size: 12px;
+    }
+    #top-bar input[type=number]:focus, #top-bar select:focus {
+      outline: none; border-color: var(--accent);
+    }
   </style>
 </head>
 <body>
@@ -200,6 +210,44 @@
   <!-- ── Top Bar ──────────────────────────────────────────────────────────── -->
   <header id="top-bar">
     <span style="font-weight:700; font-size:15px;">PerfectPixel Editor</span>
+
+    <!-- Tool settings: shown/hidden by setActiveTool -->
+    <div id="tool-settings-pencil" style="display:none; align-items:center; gap:8px;">
+      <label style="font-size:12px; color:var(--text-muted);">Size</label>
+      <input id="opt-brush-size" type="number" min="1" max="32" value="1"
+        style="width:48px; padding:3px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
+      <label style="font-size:12px; color:var(--text-muted);">Shape</label>
+      <select id="opt-brush-shape"
+        style="padding:3px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
+        <option value="round">Round</option>
+        <option value="square">Square</option>
+      </select>
+      <label style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:4px; cursor:pointer;">
+        <input id="opt-pixel-perfect" type="checkbox">Pixel-perfect
+      </label>
+    </div>
+
+    <div id="tool-settings-eraser" style="display:none; align-items:center; gap:8px;">
+      <label style="font-size:12px; color:var(--text-muted);">Size</label>
+      <input id="opt-eraser-size" type="number" min="1" max="32" value="1"
+        style="width:48px; padding:3px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
+      <label style="font-size:12px; color:var(--text-muted);">Shape</label>
+      <select id="opt-eraser-shape"
+        style="padding:3px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
+        <option value="round">Round</option>
+        <option value="square">Square</option>
+      </select>
+    </div>
+
+    <div id="tool-settings-bucket" style="display:none; align-items:center; gap:8px;">
+      <label style="font-size:12px; color:var(--text-muted);">Tolerance</label>
+      <input id="opt-bucket-tolerance" type="number" min="0" max="255" value="15"
+        style="width:52px; padding:3px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
+      <label style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:4px; cursor:pointer;">
+        <input id="opt-contiguous" type="checkbox" checked>Contiguous
+      </label>
+    </div>
+
     <span style="flex:1"></span>
     <!-- Zoom controls (ACTIVE in Phase 1) -->
     <button class="btn btn-ghost" id="btn-zoom-out" title="Zoom out (Ctrl+-)">−</button>
@@ -306,6 +354,14 @@
       document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
         btn.classList.toggle('tool-btn-active', btn.dataset.tool === name);
       });
+      // Show/hide tool settings panels
+      const panelIds = ['tool-settings-pencil', 'tool-settings-eraser', 'tool-settings-bucket'];
+      panelIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      const activePanel = document.getElementById('tool-settings-' + name);
+      if (activePanel) activePanel.style.display = 'flex';
     }
 
     // ── Canvas context refs (set by initCanvases, used by all tools) ─────────
@@ -792,6 +848,37 @@
         btn.addEventListener('click', () => setActiveTool(btn.dataset.tool));
       });
       setActiveTool('pencil');
+
+      // ── Tool settings UI bindings ─────────────────────────────────────────────
+
+      // Brush size (pencil)
+      document.getElementById('opt-brush-size').addEventListener('input', e => {
+        EditorState.toolOptions.brushSize = Math.max(1, Math.min(32, parseInt(e.target.value) || 1));
+      });
+      // Brush shape (pencil)
+      document.getElementById('opt-brush-shape').addEventListener('change', e => {
+        EditorState.toolOptions.brushShape = e.target.value;
+      });
+      // Pixel-perfect
+      document.getElementById('opt-pixel-perfect').addEventListener('change', e => {
+        EditorState.toolOptions.pixelPerfect = e.target.checked;
+      });
+      // Eraser size
+      document.getElementById('opt-eraser-size').addEventListener('input', e => {
+        EditorState.toolOptions.brushSize = Math.max(1, Math.min(32, parseInt(e.target.value) || 1));
+      });
+      // Eraser shape
+      document.getElementById('opt-eraser-shape').addEventListener('change', e => {
+        EditorState.toolOptions.brushShape = e.target.value;
+      });
+      // Bucket tolerance
+      document.getElementById('opt-bucket-tolerance').addEventListener('input', e => {
+        EditorState.toolOptions.bucketTolerance = Math.max(0, Math.min(255, parseInt(e.target.value) || 0));
+      });
+      // Contiguous
+      document.getElementById('opt-contiguous').addEventListener('change', e => {
+        EditorState.toolOptions.contiguous = e.target.checked;
+      });
 
       // ── Pencil tool implementation ────────────────────────────────────────────
       let _pencilStamp = null;
