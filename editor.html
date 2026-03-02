@@ -248,10 +248,9 @@
     <div id="canvas-area">
       <div id="zoom-outer">
         <div id="zoom-container">
-          <!-- Three canvas layers inserted by initCanvases() in Phase 02 -->
-          <!-- pixel-canvas    z-index:1  (pixel buffer, NO DPR) -->
-          <!-- selection-canvas z-index:2  (marching ants, DPR-scaled) -->
-          <!-- cursor-canvas   z-index:3  (brush preview, DPR-scaled, pointer events) -->
+          <canvas id="pixel-canvas"></canvas>
+          <canvas id="selection-canvas"></canvas>
+          <canvas id="cursor-canvas"></canvas>
         </div>
       </div>
     </div>
@@ -314,86 +313,202 @@
     let selCtx = null;
     let cursorCtx = null;
 
-    // ── Function stubs (Phase 02 implements these) ────────────────────────────
+    // ── Canvas Initialization ─────────────────────────────────────────────────
 
     /**
      * Create and initialize the 3-canvas stack inside #zoom-container.
      * pixel-canvas: NO DPR, 1:1 with image coordinates.
      * overlay canvases: DPR-scaled for crisp cursor/selection rendering.
-     * Phase 02 provides the full implementation.
+     * CRITICAL: willReadFrequently must be set on pixel-canvas's FIRST getContext call.
      */
-    function initCanvases(width, height) {}
+    function initCanvases(width, height) {
+      EditorState.width  = width;
+      EditorState.height = height;
+
+      // pixel-canvas: NO DPR — width/height = image pixel dimensions exactly
+      pixelCanvas.width  = width;
+      pixelCanvas.height = height;
+      pixelCanvas.style.width  = width  + 'px';
+      pixelCanvas.style.height = height + 'px';
+      // willReadFrequently MUST be set on the FIRST getContext call (cannot be set later)
+      pixelCtx = pixelCanvas.getContext('2d', { willReadFrequently: true, alpha: true });
+
+      // overlay canvases: DPR-scaled for crisp rendering on Retina displays
+      const dpr = window.devicePixelRatio || 1;
+      [selCanvas, cursorCanvas].forEach(canvas => {
+        canvas.width  = width  * dpr;
+        canvas.height = height * dpr;
+        canvas.style.width  = width  + 'px';
+        canvas.style.height = height + 'px';
+      });
+      selCtx    = selCanvas.getContext('2d');
+      cursorCtx = cursorCanvas.getContext('2d');
+      selCtx.scale(dpr, dpr);
+      cursorCtx.scale(dpr, dpr);
+
+      // zoom-container needs explicit size so scrolling works correctly
+      const zc = document.getElementById('zoom-container');
+      zc.style.width  = width  + 'px';
+      zc.style.height = height + 'px';
+    }
 
     /**
      * Write EditorState.pixels to pixel-canvas via putImageData.
      * Never reads back from canvas (premultiplied alpha safety).
-     * Phase 02 provides the full implementation.
      */
-    function flushPixels() {}
+    function flushPixels() {
+      pixelCtx.putImageData(
+        new ImageData(EditorState.pixels, EditorState.width, EditorState.height),
+        0, 0
+      );
+    }
 
     /**
      * Convert browser pointer coordinates to canvas pixel coordinates,
-     * accounting for CSS zoom transform and scroll offset.
+     * accounting for CSS zoom transform. getBoundingClientRect() already
+     * reflects the CSS transform scale in modern browsers.
      * Returns [canvasX, canvasY] clamped to image bounds.
-     * Phase 02 provides the full implementation.
      */
-    function viewportToCanvas(clientX, clientY) { return [0, 0]; }
+    function viewportToCanvas(clientX, clientY) {
+      const rect = cursorCanvas.getBoundingClientRect();
+      const scaleX = EditorState.width  / rect.width;
+      const scaleY = EditorState.height / rect.height;
+      return [
+        Math.max(0, Math.min(EditorState.width  - 1, Math.floor((clientX - rect.left) * scaleX))),
+        Math.max(0, Math.min(EditorState.height - 1, Math.floor((clientY - rect.top)  * scaleY))),
+      ];
+    }
 
     /**
      * Read a pixel from EditorState.pixels (never from canvas element).
      * Returns [r, g, b, a] at the given canvas coordinates.
-     * Phase 02 provides the full implementation.
      */
-    function getPixel(x, y) { return [0, 0, 0, 0]; }
+    function getPixel(x, y) {
+      const i = (y * EditorState.width + x) * 4;
+      return [
+        EditorState.pixels[i],
+        EditorState.pixels[i + 1],
+        EditorState.pixels[i + 2],
+        EditorState.pixels[i + 3],
+      ];
+    }
 
     /**
      * Apply a new zoom level, keeping the given viewport point stationary.
-     * Uses CSS transform: scale() on #zoom-container.
-     * Range: 1x–64x.
-     * Phase 02 provides the full implementation.
+     * Uses CSS transform: scale() on #zoom-container. Range: 1x–64x.
      */
-    function applyZoom(newZoom, pivotX, pivotY) {}
+    function applyZoom(newZoom, pivotClientX, pivotClientY) {
+      const oldZoom = EditorState.zoom;
+      newZoom = Math.max(1, Math.min(64, newZoom));
+      const area  = document.getElementById('canvas-area');
+      const rect  = area.getBoundingClientRect();
+      const pivotX = pivotClientX - rect.left + area.scrollLeft;
+      const pivotY = pivotClientY - rect.top  + area.scrollTop;
+      area.scrollLeft = pivotX * (newZoom / oldZoom) - (pivotClientX - rect.left);
+      area.scrollTop  = pivotY * (newZoom / oldZoom) - (pivotClientY - rect.top);
+      EditorState.zoom = newZoom;
+      document.getElementById('zoom-container').style.transform = `scale(${newZoom})`;
+      document.getElementById('zoom-display').textContent = newZoom + 'x';
+    }
 
     /**
      * Fetch /output.png, decode to ImageData, store in EditorState.pixels,
      * call initCanvases(), then flushPixels().
-     * Phase 02 provides the full implementation.
+     * This is the only place getImageData is called — all subsequent reads
+     * go through EditorState.pixels (avoids premultiplied alpha corruption).
      */
-    async function loadPlaceholderImage() {}
-
-    // ── Zoom button wiring (active in Phase 1, full impl in Phase 02) ─────────
-    document.getElementById('btn-zoom-in').addEventListener('click', () => {
-      const step = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
-      const newZoom = Math.min(64, EditorState.zoom + step);
-      EditorState.zoom = newZoom;
-      document.getElementById('zoom-container').style.transform = `scale(${newZoom})`;
-      document.getElementById('zoom-display').textContent = newZoom + 'x';
-    });
-
-    document.getElementById('btn-zoom-out').addEventListener('click', () => {
-      const step = EditorState.zoom <= 4 ? 1 : EditorState.zoom <= 16 ? 2 : 4;
-      const newZoom = Math.max(1, EditorState.zoom - step);
-      EditorState.zoom = newZoom;
-      document.getElementById('zoom-container').style.transform = `scale(${newZoom})`;
-      document.getElementById('zoom-display').textContent = newZoom + 'x';
-    });
-
-    // ── Keyboard shortcuts (Phase 02 adds more) ───────────────────────────────
-    document.addEventListener('keydown', e => {
-      if (e.target.matches('input, textarea')) return;
-      if ((e.ctrlKey || e.metaKey) && e.key === '=') {
-        e.preventDefault();
-        document.getElementById('btn-zoom-in').click();
+    async function loadPlaceholderImage() {
+      try {
+        const resp   = await fetch('/output.png');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const blob   = await resp.blob();
+        const bitmap = await createImageBitmap(blob);
+        const { width, height } = bitmap;
+        // initCanvases must run first so pixelCtx exists before drawImage
+        initCanvases(width, height);
+        pixelCtx.drawImage(bitmap, 0, 0);
+        // One-time getImageData — afterwards all reads go through EditorState.pixels
+        const imageData = pixelCtx.getImageData(0, 0, width, height);
+        EditorState.pixels = imageData.data.slice(); // Uint8ClampedArray copy
+        flushPixels(); // re-render from EditorState.pixels (establishes canonical path)
+        bitmap.close();
+      } catch (err) {
+        console.warn('loadPlaceholderImage failed:', err);
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
-        e.preventDefault();
-        document.getElementById('btn-zoom-out').click();
-      }
-    });
+    }
 
     // ── DOM ready ─────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
-      loadPlaceholderImage();
+      // Acquire canvas element references before any operations
+      pixelCanvas  = document.getElementById('pixel-canvas');
+      selCanvas    = document.getElementById('selection-canvas');
+      cursorCanvas = document.getElementById('cursor-canvas');
+
+      // Load image; wire pixel-inspector and pointer events after image is ready
+      loadPlaceholderImage().then(() => {
+        // ── Pixel Inspector (reads EditorState.pixels — never canvas) ─────────
+        cursorCanvas.addEventListener('pointermove', e => {
+          if (!EditorState.pixels) return;
+          const [cx, cy] = viewportToCanvas(e.clientX, e.clientY);
+          const [r, g, b, a] = getPixel(cx, cy);
+          document.getElementById('insp-x').textContent = cx;
+          document.getElementById('insp-y').textContent = cy;
+          document.getElementById('insp-r').textContent = r;
+          document.getElementById('insp-g').textContent = g;
+          document.getElementById('insp-b').textContent = b;
+          document.getElementById('insp-a').textContent = a;
+          document.getElementById('insp-swatch').style.background =
+            `rgba(${r},${g},${b},${a / 255})`;
+        });
+
+        // Reset inspector when cursor leaves canvas
+        cursorCanvas.addEventListener('pointerleave', () => {
+          ['insp-x', 'insp-y', 'insp-r', 'insp-g', 'insp-b', 'insp-a'].forEach(id => {
+            document.getElementById(id).textContent = '—';
+          });
+          document.getElementById('insp-swatch').style.background = 'transparent';
+        });
+      });
+
+      // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
+      const canvasArea = document.getElementById('canvas-area');
+
+      // Wheel zoom (passive:false required so e.preventDefault() is respected)
+      canvasArea.addEventListener('wheel', e => {
+        e.preventDefault();
+        const delta = e.deltaY < 0 ? 1 : -1;
+        const step  = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
+        applyZoom(EditorState.zoom + delta * step, e.clientX, e.clientY);
+      }, { passive: false });
+
+      // Top bar Zoom + / - buttons (pivot = canvas area center)
+      document.getElementById('btn-zoom-in').addEventListener('click', () => {
+        const step = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
+        const rect = canvasArea.getBoundingClientRect();
+        applyZoom(EditorState.zoom + step, rect.left + rect.width / 2, rect.top + rect.height / 2);
+      });
+      document.getElementById('btn-zoom-out').addEventListener('click', () => {
+        const step = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
+        const rect = canvasArea.getBoundingClientRect();
+        applyZoom(EditorState.zoom - step, rect.left + rect.width / 2, rect.top + rect.height / 2);
+      });
+
+      // Keyboard zoom (Ctrl+= / Ctrl+-)
+      document.addEventListener('keydown', e => {
+        if (e.target.matches('input, textarea')) return;
+        if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+          e.preventDefault();
+          const step = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
+          const rect = canvasArea.getBoundingClientRect();
+          applyZoom(EditorState.zoom + step, rect.left + rect.width / 2, rect.top + rect.height / 2);
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+          e.preventDefault();
+          const step = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
+          const rect = canvasArea.getBoundingClientRect();
+          applyZoom(EditorState.zoom - step, rect.left + rect.width / 2, rect.top + rect.height / 2);
+        }
+      });
     });
   </script>
 </body>
