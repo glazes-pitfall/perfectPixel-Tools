@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PerfectPixel Editor</title>
+  <style>
+    /* ── CSS Variables (copied verbatim from web_ui.html) ────────────────── */
+    :root {
+      --bg: #0f0f13;
+      --surface: #1a1a22;
+      --surface2: #22222e;
+      --border: #2e2e3e;
+      --accent: #7c6af7;
+      --accent-hover: #9080ff;
+      --text: #e8e6f0;
+      --text-muted: #7a7890;
+      --success: #4ade80;
+      --error: #f87171;
+      --warning: #fbbf24;
+      --radius: 10px;
+    }
+
+    /* ── Reset ────────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+    }
+
+    /* ── Button styles (copied verbatim from web_ui.html) ─────────────────── */
+    .btn { padding: 8px 12px; border-radius: 7px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .2s, opacity .2s; white-space: nowrap; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
+    .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 5px 9px; font-size: 12px; }
+    .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+
+    /* ── Top Bar ──────────────────────────────────────────────────────────── */
+    #top-bar {
+      flex-shrink: 0;
+      height: 44px;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    /* ── Main Layout (CSS Grid) ───────────────────────────────────────────── */
+    #layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 280px 1fr 48px;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* ── Left Panel ───────────────────────────────────────────────────────── */
+    #left-panel {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--surface);
+    }
+
+    #left-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #left-scroll > * { flex-shrink: 0; }
+
+    /* Custom scrollbar to match dark theme */
+    #left-scroll::-webkit-scrollbar { width: 6px; }
+    #left-scroll::-webkit-scrollbar-track { background: transparent; }
+    #left-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    #left-scroll::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    #pixel-inspector {
+      flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      padding: 10px 12px;
+      background: var(--surface);
+      font-size: 12px;
+    }
+
+    /* ── Panel card (used for collapsible sections) ───────────────────────── */
+    .panel-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: var(--surface2);
+    }
+
+    /* ── Canvas Area ──────────────────────────────────────────────────────── */
+    #canvas-area {
+      overflow: auto;
+      position: relative;
+      background: var(--bg);
+    }
+
+    /* Custom scrollbar for canvas area */
+    #canvas-area::-webkit-scrollbar { width: 8px; height: 8px; }
+    #canvas-area::-webkit-scrollbar-track { background: var(--surface); }
+    #canvas-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    #canvas-area::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+    #canvas-area::-webkit-scrollbar-corner { background: var(--surface); }
+
+    /* ── Zoom outer wrapper (centers canvas when smaller than viewport) ────── */
+    #zoom-outer {
+      min-width: 100%;
+      min-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    /* ── Zoom container (CSS transform target; contains 3-canvas stack) ────── */
+    #zoom-container {
+      position: relative;
+      transform-origin: top left;
+      /* Checkerboard background — scales with CSS transform (16px canvas-pixels per cell at zoom=1) */
+      background-color: var(--surface2);
+      background-image:
+        linear-gradient(45deg, var(--surface) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--surface) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--surface) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--surface) 75%);
+      background-size: 32px 32px;
+      background-position: 0 0, 0 16px, 16px -16px, -16px 0px;
+    }
+
+    /* ── Canvas elements: pixel-perfect rendering ─────────────────────────── */
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges; /* Firefox compat */
+      display: block;
+    }
+
+    /* Three canvas layers stacked absolutely inside zoom-container */
+    #pixel-canvas,
+    #selection-canvas,
+    #cursor-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #pixel-canvas     { z-index: 1; }
+    #selection-canvas { z-index: 2; }
+    #cursor-canvas    { z-index: 3; cursor: crosshair; }
+
+    /* ── Right Panel (tool strip) ─────────────────────────────────────────── */
+    #right-panel {
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 0;
+      gap: 4px;
+      background: var(--surface);
+    }
+
+    .tool-btn {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface2);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tool-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+    .tool-sep {
+      width: 28px;
+      height: 1px;
+      background: var(--border);
+      margin: 2px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Top Bar ──────────────────────────────────────────────────────────── -->
+  <header id="top-bar">
+    <span style="font-weight:700; font-size:15px;">PerfectPixel Editor</span>
+    <span style="flex:1"></span>
+    <!-- Zoom controls (ACTIVE in Phase 1) -->
+    <button class="btn btn-ghost" id="btn-zoom-out" title="Zoom out (Ctrl+-)">−</button>
+    <span id="zoom-display" style="font-size:13px; min-width:36px; text-align:center; font-variant-numeric:tabular-nums;">4x</span>
+    <button class="btn btn-ghost" id="btn-zoom-in"  title="Zoom in (Ctrl+=)">+</button>
+    <!-- Disabled placeholders -->
+    <button class="btn btn-ghost" disabled title="Undo (Cmd+Z)">↩ Undo</button>
+    <button class="btn btn-ghost" disabled title="Redo (Shift+Cmd+Z)">↪ Redo</button>
+  </header>
+
+  <!-- ── Main Layout ─────────────────────────────────────────────────────── -->
+  <div id="layout">
+
+    <!-- Left Panel -->
+    <div id="left-panel">
+
+      <!-- Scrollable area: color card scaffold -->
+      <div id="left-scroll">
+        <div class="panel-card">
+          <div class="panel-header" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid var(--border)">
+            <span style="font-weight:600; font-size:13px;">色卡限制</span>
+            <span style="font-size:11px; color:var(--text-muted)">[Phase 4]</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pixel Inspector (permanent bottom of left panel) -->
+      <div id="pixel-inspector">
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">像素检查器</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div id="insp-swatch" style="width:20px;height:20px;border:1px solid var(--border);border-radius:3px;background:#000;flex-shrink:0"></div>
+          <div style="display:flex; flex-direction:column; gap:2px; font-size:11px; font-variant-numeric:tabular-nums;">
+            <span>X: <span id="insp-x">—</span>&nbsp; Y: <span id="insp-y">—</span></span>
+            <span>R: <span id="insp-r">—</span>&nbsp; G: <span id="insp-g">—</span>&nbsp; B: <span id="insp-b">—</span>&nbsp; A: <span id="insp-a">—</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Canvas Area -->
+    <div id="canvas-area">
+      <div id="zoom-outer">
+        <div id="zoom-container">
+          <!-- Three canvas layers inserted by initCanvases() in Phase 02 -->
+          <!-- pixel-canvas    z-index:1  (pixel buffer, NO DPR) -->
+          <!-- selection-canvas z-index:2  (marching ants, DPR-scaled) -->
+          <!-- cursor-canvas   z-index:3  (brush preview, DPR-scaled, pointer events) -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel (tool strip — disabled in Phase 1) -->
+    <div id="right-panel">
+      <button class="tool-btn" disabled title="Marquee (M)">&#9645;</button>
+      <button class="tool-btn" disabled title="Wand (W)">&#10022;</button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" disabled title="Move (V)">&#10021;</button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" disabled title="Pencil (B)">&#9998;</button>
+      <button class="tool-btn" disabled title="Bucket (G)">&#9776;</button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" disabled title="Eraser (E)">&#9633;</button>
+    </div>
+
+  </div><!-- /#layout -->
+
+  <script>
+    // ── EditorState — Single Source of Truth ─────────────────────────────────
+    // Source: CLAUDE.md "EditorState" section / RESEARCH.md Pattern 4
+    const EditorState = {
+      width: 0, height: 0,
+      pixels: null,               // Uint8ClampedArray, RGBA, length = w*h*4
+      gridW: 0, gridH: 0,         // pixel art grid cell size (from Ver 1.1)
+      zoom: 4, panX: 0, panY: 0,
+      activeTool: 'pencil',       // 'pencil'|'eraser'|'bucket'|'wand'|'marquee'|'move'
+      foregroundColor: [0, 0, 0, 255],
+      toolOptions: {
+        brushSize: 1, brushShape: 'round',
+        pixelPerfect: false,
+        bucketTolerance: 15, wandTolerance: 15,
+        contiguous: true,
+      },
+      selection: null,            // null | {x, y, w, h} in canvas pixels
+      selectionPixels: null,      // Uint8ClampedArray for move/transform
+      transformState: null,
+      history: [],                // Uint8ClampedArray snapshots
+      historyIndex: -1,
+      MAX_HISTORY: 50,
+      palette: [],                // [[r,g,b], ...] — same format as web_ui.html
+
+      // Minimal pub/sub (no library needed)
+      _listeners: {},
+      on(event, fn) {
+        if (!this._listeners[event]) this._listeners[event] = [];
+        this._listeners[event].push(fn);
+      },
+      emit(event, data) {
+        (this._listeners[event] || []).forEach(fn => fn(data));
+      },
+    };
+
+    // ── Canvas context refs (set by initCanvases, used by all tools) ─────────
+    let pixelCanvas = null;
+    let selCanvas = null;
+    let cursorCanvas = null;
+    let pixelCtx = null;
+    let selCtx = null;
+    let cursorCtx = null;
+
+    // ── Function stubs (Phase 02 implements these) ────────────────────────────
+
+    /**
+     * Create and initialize the 3-canvas stack inside #zoom-container.
+     * pixel-canvas: NO DPR, 1:1 with image coordinates.
+     * overlay canvases: DPR-scaled for crisp cursor/selection rendering.
+     * Phase 02 provides the full implementation.
+     */
+    function initCanvases(width, height) {}
+
+    /**
+     * Write EditorState.pixels to pixel-canvas via putImageData.
+     * Never reads back from canvas (premultiplied alpha safety).
+     * Phase 02 provides the full implementation.
+     */
+    function flushPixels() {}
+
+    /**
+     * Convert browser pointer coordinates to canvas pixel coordinates,
+     * accounting for CSS zoom transform and scroll offset.
+     * Returns [canvasX, canvasY] clamped to image bounds.
+     * Phase 02 provides the full implementation.
+     */
+    function viewportToCanvas(clientX, clientY) { return [0, 0]; }
+
+    /**
+     * Read a pixel from EditorState.pixels (never from canvas element).
+     * Returns [r, g, b, a] at the given canvas coordinates.
+     * Phase 02 provides the full implementation.
+     */
+    function getPixel(x, y) { return [0, 0, 0, 0]; }
+
+    /**
+     * Apply a new zoom level, keeping the given viewport point stationary.
+     * Uses CSS transform: scale() on #zoom-container.
+     * Range: 1x–64x.
+     * Phase 02 provides the full implementation.
+     */
+    function applyZoom(newZoom, pivotX, pivotY) {}
+
+    /**
+     * Fetch /output.png, decode to ImageData, store in EditorState.pixels,
+     * call initCanvases(), then flushPixels().
+     * Phase 02 provides the full implementation.
+     */
+    async function loadPlaceholderImage() {}
+
+    // ── Zoom button wiring (active in Phase 1, full impl in Phase 02) ─────────
+    document.getElementById('btn-zoom-in').addEventListener('click', () => {
+      const step = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
+      const newZoom = Math.min(64, EditorState.zoom + step);
+      EditorState.zoom = newZoom;
+      document.getElementById('zoom-container').style.transform = `scale(${newZoom})`;
+      document.getElementById('zoom-display').textContent = newZoom + 'x';
+    });
+
+    document.getElementById('btn-zoom-out').addEventListener('click', () => {
+      const step = EditorState.zoom <= 4 ? 1 : EditorState.zoom <= 16 ? 2 : 4;
+      const newZoom = Math.max(1, EditorState.zoom - step);
+      EditorState.zoom = newZoom;
+      document.getElementById('zoom-container').style.transform = `scale(${newZoom})`;
+      document.getElementById('zoom-display').textContent = newZoom + 'x';
+    });
+
+    // ── Keyboard shortcuts (Phase 02 adds more) ───────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.target.matches('input, textarea')) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === '=') {
+        e.preventDefault();
+        document.getElementById('btn-zoom-in').click();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        document.getElementById('btn-zoom-out').click();
+      }
+    });
+
+    // ── DOM ready ─────────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      loadPlaceholderImage();
+    });
+  </script>
+</body>
+</html>
