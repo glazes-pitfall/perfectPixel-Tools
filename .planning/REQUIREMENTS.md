@@ -13,8 +13,8 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 
 ### UI — 编辑器布局
 
-- [ ] **UI-01**: 编辑器为独立页面（editor.html），4 区布局：左栏 / 中央画布 / 右栏工具箱 / 顶栏参数
-- [ ] **UI-02**: 左栏包含色卡限制面板（可折叠）、画布编辑器面板（可折叠）、常驻调色盘（左下角固定）
+- [x] **UI-01**: 编辑器为独立页面（editor.html），4 区布局：左栏 / 中央画布 / 右栏工具箱 / 顶栏参数
+- [x] **UI-02**: 左栏包含色卡限制面板（可折叠）、画布编辑器面板（可折叠）、常驻调色盘（左下角固定）
 - [ ] **UI-03**: 应用色卡后，中央画布右侧显示色卡映射对比图（含精准版/N倍放大版下载）
 
 ### CANVAS — 画布渲染
@@ -101,8 +101,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | ENTRY-01 | Phase 7 | Pending |
-| UI-01 | Phase 1 | Pending |
-| UI-02 | Phase 1 | Pending |
+| UI-01 | Phase 1 | Complete |
+| UI-02 | Phase 1 | Complete |
 | UI-03 | Phase 7 | Pending |
 | CANVAS-01 | Phase 1 | Pending |
 | CANVAS-02 | Phase 1 | Pending |

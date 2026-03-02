@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 1 of 7 (Foundation)
-Plan: 0 of TBD in current phase
-Status: Ready to plan
-Last activity: 2026-03-02 — Roadmap created; 7 phases derived from 33 v1 requirements
+Plan: 1 of TBD in current phase
+Status: In progress
+Last activity: 2026-03-02 — Plan 01-01 complete: editor.html skeleton + Flask routes
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 5%
 
 ## Performance Metrics
 
@@ -47,6 +47,9 @@ Recent decisions affecting current work:
 - [Arch]: RotSprite is required (not optional) for Phase 6; JS reimplementation of Aseprite Scale2x + NN-rotate + downsample
 - [Arch]: Pixel canvas must NOT be DPR-scaled; only overlay canvases use DPR — wrong direction causes global tool coordinate breakage
 - [Risk]: sessionStorage quota fallback for large images needs explicit API design before Phase 7 starts
+- [01-01]: Checkerboard on #zoom-container (inside CSS transform) so cells scale with zoom per CONTEXT.md
+- [01-01]: Zoom buttons active in Phase 1 (bypass applyZoom stub); Phase 02 provides full scroll-adjusted implementation
+- [01-01]: output.png served via explicit Flask route, not static_folder, for security
 
 ### Pending Todos
 
@@ -61,5 +64,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Roadmap written; REQUIREMENTS.md traceability updated; ready to plan Phase 1
+Stopped at: Phase 1 Plan 01 complete — editor.html skeleton and Flask routes committed
 Resume file: None
