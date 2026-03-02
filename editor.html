@@ -121,20 +121,14 @@
     #canvas-area::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
     #canvas-area::-webkit-scrollbar-corner { background: var(--surface); }
 
-    /* ── Zoom outer wrapper (centers canvas when smaller than viewport) ────── */
-    #zoom-outer {
-      min-width: 100%;
-      min-height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      box-sizing: border-box;
+    /* ── Zoom scroll content (PAD-padded scroll space for pan + zoom) ──────── */
+    #zoom-scroll-content {
+      position: relative;
     }
 
     /* ── Zoom container (CSS transform target; contains 3-canvas stack) ────── */
     #zoom-container {
-      position: relative;
+      position: absolute;
       transform-origin: top left;
       /* Checkerboard background — scales with CSS transform (16px canvas-pixels per cell at zoom=1) */
       background-color: var(--surface2);
@@ -246,7 +240,7 @@
 
     <!-- Canvas Area -->
     <div id="canvas-area">
-      <div id="zoom-outer">
+      <div id="zoom-scroll-content">
         <div id="zoom-container">
           <canvas id="pixel-canvas"></canvas>
           <canvas id="selection-canvas"></canvas>
