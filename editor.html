@@ -547,6 +547,59 @@
     }
 
     /**
+     * Flood-fill starting at (startX, startY) with fillColor.
+     * tolerance: per-channel axis-aligned box (0=exact, 255=fill all).
+     * contiguous: true=BFS connected region, false=all matching pixels in image.
+     * BFS uses Uint8Array visited bitmap — mark BEFORE push (O(n) guarantee).
+     */
+    function floodFill(startX, startY, fillColor, tolerance, contiguous) {
+      const target = getPixel(startX, startY);
+      // No-op: filling transparent with transparent
+      if (target[3] === 0 && fillColor[3] === 0) return;
+
+      function matches(px, py) {
+        const [r, g, b, a] = getPixel(px, py);
+        if (target[3] === 0 && a === 0) return true;
+        if (target[3] === 0 || a === 0) return false;
+        return Math.abs(r - target[0]) <= tolerance &&
+               Math.abs(g - target[1]) <= tolerance &&
+               Math.abs(b - target[2]) <= tolerance &&
+               Math.abs(a - target[3]) <= tolerance;
+      }
+
+      if (contiguous) {
+        // BFS: mark visited BEFORE pushing to prevent exponential revisit
+        const visited = new Uint8Array(EditorState.width * EditorState.height);
+        const startIdx = startX + startY * EditorState.width;
+        visited[startIdx] = 1;
+        const stack = [startIdx];
+        while (stack.length) {
+          const idx = stack.pop();
+          const px = idx % EditorState.width;
+          const py = (idx / EditorState.width) | 0;
+          setPixel(px, py, fillColor);
+          const neighbors = [
+            [px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]
+          ];
+          for (const [nx, ny] of neighbors) {
+            if (nx < 0 || nx >= EditorState.width || ny < 0 || ny >= EditorState.height) continue;
+            const ni = nx + ny * EditorState.width;
+            if (!visited[ni] && matches(nx, ny)) {
+              visited[ni] = 1;  // mark BEFORE push — critical for O(n) performance
+              stack.push(ni);
+            }
+          }
+        }
+      } else {
+        // Non-contiguous: scan every pixel for color match
+        for (let y = 0; y < EditorState.height; y++)
+          for (let x = 0; x < EditorState.width; x++)
+            if (matches(x, y)) setPixel(x, y, fillColor);
+      }
+      flushPixels();
+    }
+
+    /**
      * PAD: virtual scroll padding (px) around canvas in scroll-content.
      * Ensures scroll headroom exists even when canvas is smaller than viewport.
      * Must match the left/top set in centerCanvas().
@@ -803,6 +856,26 @@
 
       // Clear cursor preview when pointer leaves canvas
       cursorCanvas.addEventListener('pointerleave', () => { clearCursorPreview(); });
+
+      // ── Paint Bucket tool implementation ─────────────────────────────────────
+
+      tools.bucket = {
+        onDown(x, y) {
+          pushHistory();  // save-before: push BEFORE fill (bucket is instant-apply)
+          floodFill(
+            x, y,
+            [...EditorState.foregroundColor],  // alpha=255, enforced by color picker
+            EditorState.toolOptions.bucketTolerance,
+            EditorState.toolOptions.contiguous
+          );
+        },
+        onMove() {},  // bucket has no drag behavior
+        onUp() {},
+        onCursor(x, y) {
+          // Show bucket cursor: crosshair at pixel location
+          drawCursorPreview(x, y, EditorState.foregroundColor);
+        },
+      };
 
       // ── END Tool dispatch ─────────────────────────────────────────────────────
 
