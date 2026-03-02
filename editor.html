@@ -373,6 +373,85 @@
       updateHistoryButtons();
     }
 
+    // ── Phase 3: Brush Tools ──────────────────────────────────────────────────
+
+    function getBrushStamp(size, shape) {
+      if (size === 1) return [[0, 0]];
+      const offsets = [];
+      if (shape === 'round') {
+        const r = (size - 1) / 2;
+        for (let dy = -Math.ceil(r); dy <= Math.ceil(r); dy++)
+          for (let dx = -Math.ceil(r); dx <= Math.ceil(r); dx++)
+            if (Math.sqrt(dx * dx + dy * dy) <= r) offsets.push([dx, dy]);
+      } else {
+        const half = Math.floor(size / 2);
+        for (let dy = -half; dy <= half; dy++)
+          for (let dx = -half; dx <= half; dx++)
+            offsets.push([dx, dy]);
+      }
+      return offsets;
+    }
+
+    function applyStamp(cx, cy, stamp, color) {
+      for (const [dx, dy] of stamp) {
+        const x = cx + dx, y = cy + dy;
+        if (x >= 0 && x < EditorState.width && y >= 0 && y < EditorState.height)
+          setPixel(x, y, color);
+      }
+      flushPixels();
+    }
+
+    function bresenhamLine(x0, y0, x1, y1) {
+      const pts = [];
+      let dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+      let sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+      let err = dx - dy;
+      while (true) {
+        pts.push([x0, y0]);
+        if (x0 === x1 && y0 === y1) break;
+        const e2 = 2 * err;
+        if (e2 > -dy) { err -= dy; x0 += sx; }
+        if (e2 <  dx) { err += dx; y0 += sy; }
+      }
+      return pts;
+    }
+
+    function drawCursorPreview(cx, cy, color) {
+      cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+      if (!EditorState.pixels) return;
+      const stamp = getBrushStamp(EditorState.toolOptions.brushSize, EditorState.toolOptions.brushShape);
+      const [r, g, b, a] = color;
+      for (const [dx, dy] of stamp) {
+        cursorCtx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + (a / 255) + ')';
+        cursorCtx.fillRect(cx + dx, cy + dy, 1, 1);
+      }
+      // 1px white outline around bounding box for visibility
+      const size = EditorState.toolOptions.brushSize;
+      const half = Math.floor(size / 2);
+      cursorCtx.strokeStyle = 'rgba(255,255,255,0.8)';
+      cursorCtx.lineWidth = 1 / (window.devicePixelRatio || 1);
+      cursorCtx.strokeRect(cx - half - 0.5, cy - half - 0.5, size + 1, size + 1);
+    }
+
+    function clearCursorPreview() {
+      if (cursorCtx) cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+    }
+
+    let _ppHistory = [];  // last two placed pixels [[x,y],[x,y]]
+
+    function resetPixelPerfect() { _ppHistory = []; }
+
+    function shouldSkipPixelPerfect(cx, cy) {
+      if (_ppHistory.length < 2) { _ppHistory.push([cx, cy]); return false; }
+      const [p2, p1] = _ppHistory;
+      const sharesAxisWithP2 = (p1[0] === p2[0] || p1[1] === p2[1]);
+      const sharesAxisWithCur = (p1[0] === cx || p1[1] === cy);
+      const curDiffersFromP2  = (p2[0] !== cx && p2[1] !== cy);
+      const skip = sharesAxisWithP2 && sharesAxisWithCur && curDiffersFromP2;
+      _ppHistory = [p1, [cx, cy]];
+      return skip;
+    }
+
     // ── Canvas Initialization ─────────────────────────────────────────────────
 
     /**
@@ -453,6 +532,18 @@
         EditorState.pixels[i + 2],
         EditorState.pixels[i + 3],
       ];
+    }
+
+    /**
+     * Write a pixel to EditorState.pixels. Does NOT call flushPixels().
+     * Callers must call flushPixels() after batch operations complete.
+     */
+    function setPixel(x, y, [r, g, b, a]) {
+      const i = (y * EditorState.width + x) * 4;
+      EditorState.pixels[i]     = r;
+      EditorState.pixels[i + 1] = g;
+      EditorState.pixels[i + 2] = b;
+      EditorState.pixels[i + 3] = a;
     }
 
     /**
@@ -648,6 +739,71 @@
         btn.addEventListener('click', () => setActiveTool(btn.dataset.tool));
       });
       setActiveTool('pencil');
+
+      // ── Pencil tool implementation ────────────────────────────────────────────
+      let _pencilStamp = null;
+      let _lastPencilX = null, _lastPencilY = null;
+
+      tools.pencil = {
+        onDown(x, y) {
+          _pencilStamp = getBrushStamp(EditorState.toolOptions.brushSize, EditorState.toolOptions.brushShape);
+          resetPixelPerfect();
+          _lastPencilX = x; _lastPencilY = y;
+          applyStamp(x, y, _pencilStamp, [...EditorState.foregroundColor]);
+          _ppHistory.push([x, y]);
+          // NO pushHistory here — save-after: push on pointerup
+        },
+        onMove(x, y) {
+          if (_lastPencilX === null) return;
+          const pts = bresenhamLine(_lastPencilX, _lastPencilY, x, y);
+          // Skip first point (already drawn by onDown or previous onMove)
+          for (let i = 1; i < pts.length; i++) {
+            const [px, py] = pts[i];
+            if (EditorState.toolOptions.pixelPerfect && shouldSkipPixelPerfect(px, py)) continue;
+            applyStamp(px, py, _pencilStamp, [...EditorState.foregroundColor]);
+          }
+          _lastPencilX = x; _lastPencilY = y;
+        },
+        onUp() {
+          pushHistory();  // save-after model: push AFTER stroke completes
+          _lastPencilX = null; _lastPencilY = null;
+          resetPixelPerfect();
+        },
+        onCursor(x, y) { drawCursorPreview(x, y, EditorState.foregroundColor); },
+      };
+
+      // ── Eraser tool implementation ────────────────────────────────────────────
+      let _eraserStamp = null;
+      let _lastEraserX = null, _lastEraserY = null;
+
+      tools.eraser = {
+        onDown(x, y) {
+          _eraserStamp = getBrushStamp(EditorState.toolOptions.brushSize, EditorState.toolOptions.brushShape);
+          _lastEraserX = x; _lastEraserY = y;
+          // alpha MUST be 0 — global color mode constraint
+          applyStamp(x, y, _eraserStamp, [0, 0, 0, 0]);
+        },
+        onMove(x, y) {
+          if (_lastEraserX === null) return;
+          const pts = bresenhamLine(_lastEraserX, _lastEraserY, x, y);
+          for (let i = 1; i < pts.length; i++) {
+            applyStamp(pts[i][0], pts[i][1], _eraserStamp, [0, 0, 0, 0]);
+          }
+          _lastEraserX = x; _lastEraserY = y;
+        },
+        onUp() {
+          pushHistory();  // save-after
+          _lastEraserX = null; _lastEraserY = null;
+        },
+        onCursor(x, y) {
+          // Eraser preview: semi-transparent white to indicate erase (not draw)
+          drawCursorPreview(x, y, [200, 200, 200, 128]);
+        },
+      };
+
+      // Clear cursor preview when pointer leaves canvas
+      cursorCanvas.addEventListener('pointerleave', () => { clearCursorPreview(); });
+
       // ── END Tool dispatch ─────────────────────────────────────────────────────
 
       // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
