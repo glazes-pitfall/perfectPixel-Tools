@@ -5,74 +5,74 @@
 ## Naming Patterns
 
 **Files:**
-- Module files use `snake_case`: `perfect_pixel.py`, `perfect_pixel_noCV2.py`
-- Variant implementations suffixed with descriptive names: `perfect_pixel_noCV2.py` (no OpenCV2 dependency variant)
-- Web application file: `web_app.py`
+- Module files: `snake_case.py` (e.g., `perfect_pixel.py`, `perfect_pixel_noCV2.py`)
+- Private/internal modules indicated by filename, not prefix (e.g., `_noCV2` variant for NumPy-only implementation)
+- Application entry point: `web_app.py`
 
 **Functions:**
-- All functions use `snake_case`: `get_perfect_pixel()`, `detect_grid_scale()`, `sample_majority()`
+- All functions use `snake_case` (e.g., `parse_gpl()`, `rgb_to_lab()`, `get_perfect_pixel()`)
 - Private/internal functions prefixed with single underscore: `_nearest_indices()`, `_pillow_quantize()`, `_deduplicate_palette()`
-- Descriptive, action-oriented names: `compute_fft_magnitude()`, `detect_peak()`, `apply_palette_swap()`
-- API route handlers named with prefix matching functionality: `api_generate_palette()`, `api_apply_palette()`
+- Sampling functions: `sample_center()`, `sample_majority()`, `sample_median()`
+- Conversion functions: `rgb_to_lab()`, `rgb_to_gray()`, `b64_to_rgb()`
 
 **Variables:**
-- Loop counters use single letters: `i`, `j`, `k`, `x`, `y`, `H`, `W`
-- Short mathematical variables: `mx` (max), `mn` (min), `thr` (threshold), `ker` (kernel), `sigma`
-- Descriptive names for arrays/data: `x_coords`, `y_coords`, `grad_x_sum`, `grad_y_sum`, `palette_a`, `palette_b`
-- Abbreviated coordinate names in image processing: `x`, `y`, `H` (height), `W` (width), `C` (channels)
-- Color array names: `rgb`, `bgr`, `gray`, `pixels`, `palette`
+- Local variables use `snake_case`: `rgb_array`, `image_b64`, `palette_json`, `refine_intensity`
+- Short mathematical variables acceptable: `H`, `W`, `C` (height, width, channels), `mx`, `mn` (max, min), `thr` (threshold), `N`, `K` (dimensions)
+- Loop counters: `i`, `j`, `k` for nested operations
+- Array shapes: `(N, K, 3)` notation in comments to clarify tensor dimensions
 
 **Types:**
-- Numpy arrays suffix with data representation: `_array`, `_sum`, `_idx`
-- Boolean flags descriptive: `fix_square`, `debug`, `use_lab`
-- Configuration parameters fully spelled: `refine_intensity`, `sample_method`, `export_scale`
+- No explicit type hints in function signatures (follows pattern of existing codebase)
+- NumPy arrays documented with shape in comments: `pixels_feat: (N, 3)`, `palette_feat: (K, 3)`
+- Color representations: `[r, g, b]` lists, `np.ndarray` with dtype specified in code
 
 ## Code Style
 
 **Formatting:**
-- No explicit linter/formatter detected (no `.flake8`, `.pylintrc`, `pyproject.toml` linting config)
-- Consistent 4-space indentation throughout
-- Line length varies, some lines exceed 100 characters (e.g., `if grad_x_sum[i] > grad_x_sum[i - 1] and grad_x_sum[i] > grad_x_sum[i + 1] and grad_x_sum[i] >= thr_x:`)
-- Blank lines between logical sections (2-3 blank lines before major function blocks)
+- 4-space indentation, no tabs
+- Line continuation with backslash at operators (seen in web_app.py line 27-28)
+- Blank lines between logical sections (minimum 1 blank line between function definitions)
+- Section headers use dash separators: `# ── Palette file parsers ────────────────────────────────────────────────`
 
 **Linting:**
-- No linter configuration detected
-- Code uses PyPI packages without strict version pinning beyond `requires-python = ">=3.8"` in `pyproject.toml`
+- No explicit linting config found (`.eslintrc`, `.pylintrc`, etc. not present)
+- Code appears to follow PEP 8 conventions informally
 
-## Import Organization
+**Import Organization:**
+1. Standard library first: `sys`, `os`, `io`, `json`, `struct`, `base64`
+2. Third-party libraries: `numpy`, `cv2`, `PIL`, `flask`, `torch` (for ComfyUI integration)
+3. Local imports: `from perfect_pixel import get_perfect_pixel`
 
-**Order:**
-1. Standard library imports: `sys`, `os`, `base64`, `io`, `json`, `struct`
-2. Third-party imports: `numpy`, `cv2`, `PIL`, `flask`
-3. Project imports: `from src.perfect_pixel import get_perfect_pixel`
+Example from `web_app.py`:
+```python
+import sys
+import os
+import base64
+import io
+import json
+import struct
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
+
+import cv2
+import numpy as np
+from PIL import Image
+from flask import Flask, request, jsonify, send_file, Response
+from perfect_pixel import get_perfect_pixel
+```
 
 **Path Aliases:**
-- No path aliases (`@` syntax) detected
-- Direct relative imports used: `from src.perfect_pixel import get_perfect_pixel`
-- Module-level import fallback pattern: `try/except ImportError` for optional dependencies (`cv2`)
-
-**Pattern from `__init__.py`:**
-```python
-try:
-    import cv2
-    from .perfect_pixel import get_perfect_pixel as _get_perfect_pixel_opencv
-    get_perfect_pixel = _get_perfect_pixel_opencv
-except ImportError:
-    _get_perfect_pixel_opencv = None
-    get_perfect_pixel = _get_perfect_pixel_numpy
-```
+- None detected. Standard relative imports used.
 
 ## Error Handling
 
-**Patterns:**
-- Web routes use `try/except Exception as e` with JSON error responses
-- Try blocks wrap external operations (image decode, quantization, color space conversion)
-- Generic `Exception` catching used for broad error handling: `except Exception as e:`
-- Specific `ValueError` catching in parsers: `except ValueError: continue`
-- Return `None` for failure cases without raising: `if grid_w is None or grid_h is None: return None, None, image`
-- JSON error responses with HTTP status codes: `400` (missing data), `422` (validation failure), `500` (server error)
+**Web Routes (Flask):**
+- Try-except blocks with specific error messages returned as JSON with HTTP status codes:
+  - `400` - Bad input (missing files, decoding errors)
+  - `422` - Validation failure (grid detection failed)
+  - `500` - Server error (algorithm failures)
 
-**Pattern from `web_app.py` routes:**
+Example pattern from `web_app.py` (lines 407-410):
 ```python
 try:
     rgb = b64_to_rgb(image_b64)
@@ -80,72 +80,109 @@ except Exception as e:
     return jsonify({"error": f"Cannot decode image: {e}"}), 400
 ```
 
+**Algorithm Functions:**
+- Return `None` or `(None, None)` on detection/parsing failures
+- Callers check for `None` explicitly:
+  ```python
+  if grid_w is None or grid_h is None:
+      return jsonify({"error": "Grid detection failed..."}), 422
+  ```
+
+**Silent Fallbacks:**
+- Palette parsing uses exception handling with continue for malformed lines (lines 34-35 of web_app.py)
+- No exceptions raised; empty results returned if no valid colors extracted
+
 ## Logging
 
-**Framework:** `console.log` style via `print()` statements (no logging module used)
+**Framework:** `print()` statements only (no logging module)
 
 **Patterns:**
-- Information-level messages: `print(f"Detected grid size from gradient: ({scale_x:.2f}, {scale_y:.2f})")`
-- Debug/status messages: `print("FFT-based grid estimation failed, fallback to gradient-based method.")`
-- Application startup: `print("Perfect Pixel Web UI running at http://localhost:5010")`
-- No formal logging levels (DEBUG, INFO, ERROR) - all print statements
-- Debug output controlled by optional `debug=True` parameter triggering `grid_layout()` visualization
+- Debug status messages: `print(f"Detected grid size from gradient: ({scale_x:.2f}, {scale_y:.2f})")`
+- Fallback notifications: `print("FFT-based grid estimation failed, fallback to gradient-based method.")`
+- Final results: `print(f"Refined grid size: ({refined_size_x}, {refined_size_y})")`
+- No structured logging; simple string formatting with f-strings
+
+Location of print statements:
+- `perfect_pixel.py`: Grid detection results (lines 318, 328, 335, 339, 350, 430)
+- `web_app.py`: Application startup (line 540)
 
 ## Comments
 
 **When to Comment:**
-- Inline comments for non-obvious algorithm details: `# log(1 + |F|)`, `# enforce a dead-zone around center`
-- Section delimiters using dashes: `# ── Palette file parsers ────────────────────────────────────────────────────`
-- Algorithm step comments: `# Step 1: initialize palette with FASTOCTREE`
-- Sparse usage - most code is self-documenting via function/variable names
+- Section headers for logical groupings (dash separators)
+- Algorithm intent before complex calculations (e.g., "Morphological opening removes isolated noise pixels" at line 249)
+- State what, not how (e.g., "Keep only connected components >= min_px pixels" rather than loop structure)
 
 **JSDoc/TSDoc:**
-- Docstrings used for major public functions only
-- Single-line docstrings for simple functions: `"""Parse GIMP Palette (.gpl) text → list of [r, g, b]"""`
-- Multi-line docstrings for complex functions with parameter descriptions:
-```python
-def get_perfect_pixel(image, sample_method="center", grid_size = None, min_size = 4.0, peak_width = 6, refine_intensity = 0.25, fix_square = True, debug=False):
-    """
-    Args:
-        image: RGB Image (H * W * 3)
-        sample_method: "majority", "center", or "median"
-        grid_size: Manually set grid size (grid_w, grid_h) to override auto-detection
-    ...
-    returns:
-        refined_w, refined_h, scaled_image
-    """
-```
-- Type hints used in `perfect_pixel_noCV2.py`: `def rgb_to_gray(image_rgb: np.ndarray) -> np.ndarray:`
-- Type hints inconsistently applied (present in `perfect_pixel_noCV2.py`, absent in `perfect_pixel.py`)
+- Used for public API functions only
+- Example from `web_app.py` (lines 22-23):
+  ```python
+  def parse_gpl(text):
+      """Parse GIMP Palette (.gpl) text → list of [r, g, b]"""
+  ```
+- Docstrings are one-liners for private functions, omitted for simple helpers
+- No parameter/return documentation in docstrings; inferred from code
 
 ## Function Design
 
-**Size:**
-- Range from 5-line utility functions to 100+ line complex algorithms
-- Long functions typical for image processing: `detect_grid_scale()` (34 lines), `get_perfect_pixel()` (68 lines), `quantize_coverage_boost()` (75+ lines)
+**Size:** Functions range from 2-100 lines; most under 40 lines. Larger functions are algorithm implementations with clear phases.
 
 **Parameters:**
-- Mix of required positional and optional keyword arguments
-- Default values provided for algorithm tuning: `peak_width=6`, `rel_thr=0.35`, `min_dist=6`
-- Configuration parameters with sensible defaults: `refine_intensity=0.25`, `fix_square=True`, `debug=False`
-- Numpy array types dominant in image processing functions
+- Most functions take 2-5 parameters
+- Default parameters used for optional settings: `refine_intensity=0.25`, `use_lab=False`, `min_region_pct=1.0`
+- Boolean flags for mode selection: `fix_square=True`, `debug=False`
+- Request form data unpacked individually from Flask `request.form.get()`
 
 **Return Values:**
-- Multiple return values common: `return grid_w, grid_h` or `return refined_size_x, refined_size_y, scaled_image`
-- `None` returned for failure cases: `return None, None` or `return None`
-- Tuple unpacking in callers: `grid_w, grid_h, out = get_perfect_pixel(...)`
+- Single values for simple computations
+- Tuples for multiple related outputs: `(grid_w, grid_h)`, `(gx, gy)`
+- Arrays for image processing operations
+- JSON-serializable dicts for Flask routes: `{"palette": palette, "count": len(palette)}`
 
 ## Module Design
 
 **Exports:**
-- Single public export in `__init__.py`: `__all__ = ["get_perfect_pixel"]`
-- All other functions are module-private or internal helpers
-- Fallback export pattern for optional dependencies (OpenCV vs NumPy implementations)
+- Core library exposes single public function: `get_perfect_pixel()` via `__init__.py`
+- Web app routes defined directly with `@app.route()` decorators
+- Palette parsing/export functions defined at module level but clearly sectioned with comments
 
 **Barrel Files:**
-- `__init__.py` acts as barrel file, re-exporting single public function
-- Implementation files (`perfect_pixel.py`, `perfect_pixel_noCV2.py`) contain full algorithm suite but not directly imported by consumers
-- Web app imports directly: `from perfect_pixel import get_perfect_pixel` (not from barrel)
+- Used in library layer: `src/perfect_pixel/__init__.py` (lines 1-18)
+- Imports both CV2 and noCV2 backends, tries CV2 first, falls back to NumPy
+- Exports only `get_perfect_pixel` via `__all__ = ["get_perfect_pixel"]`
+
+Example from `src/perfect_pixel/__init__.py`:
+```python
+__version__ = "0.1.2"
+
+from .perfect_pixel_noCV2 import get_perfect_pixel as _get_perfect_pixel_numpy
+
+try:
+    import cv2
+    from .perfect_pixel import get_perfect_pixel as _get_perfect_pixel_opencv
+    get_perfect_pixel = _get_perfect_pixel_opencv
+except ImportError:
+    _get_perfect_pixel_opencv = None
+    get_perfect_pixel = _get_perfect_pixel_numpy
+
+__all__ = ["get_perfect_pixel"]
+```
+
+## Dual Backend Pattern
+
+**CV2 Backend** (`perfect_pixel.py`):
+- Uses OpenCV for fast operations
+- Functions: `estimate_grid_fft()`, `estimate_grid_gradient()`, `detect_grid_scale()`, `refine_grids()`, `sample_majority()` (with `cv2.kmeans`)
+- Algorithm heavy with image processing primitives
+
+**NumPy-only Backend** (`perfect_pixel_noCV2.py`):
+- Reimplements core algorithms without CV2 (for lightweight deployments)
+- Custom implementations: `rgb_to_gray()`, `sobel_xy()`, `conv2d_same()` (manual convolution)
+- Same public API: `get_perfect_pixel()` with identical signature
+- Behavioral consistency: Must maintain feature parity with CV2 backend
+
+**Key Rule:**
+If bug fix applied to one backend, apply to both. Signature of `get_perfect_pixel(image, sample_method, grid_size, min_size, peak_width, refine_intensity, fix_square, debug)` must not change.
 
 ---
 

@@ -6,209 +6,172 @@
 
 ```
 perfectPixel_ver1.1/
-├── .planning/                          # Planning and analysis documents
-│   └── codebase/                       # Codebase documentation
-├── src/                                # Main library source code
-│   └── perfect_pixel/                  # Core package
-│       ├── __init__.py                 # Public API and version
-│       ├── perfect_pixel.py            # OpenCV-based implementation (436 lines)
-│       └── perfect_pixel_noCV2.py      # NumPy-only fallback (490 lines)
-├── integrations/                       # External integrations
-│   └── comfyui/                        # ComfyUI node integration
-│       ├── README.md                   # Integration documentation
-│       └── PerfectPixelComfy/          # ComfyUI custom node package
-│           ├── __init__.py
+├── src/perfect_pixel/              # Core algorithm library
+│   ├── __init__.py                 # Backend auto-selector
+│   ├── perfect_pixel.py            # OpenCV backend (fast)
+│   └── perfect_pixel_noCV2.py      # NumPy-only backend (lightweight)
+├── web_app.py                      # Flask server + palette/color endpoints
+├── web_ui.html                     # Single-file browser UI (inline CSS/JS)
+├── example.py                      # CLI demo script
+├── integrations/
+│   └── comfyui/
+│       └── PerfectPixelComfy/
+│           ├── __init__.py         # Node class mappings
 │           └── nodes_perfect_pixel.py  # ComfyUI node wrapper
-├── images/                             # Test images directory
-├── assets/                             # Documentation/example images (7 files)
-├── .git/                               # Git repository
-├── .gitignore                          # Git ignore rules
-├── example.py                          # Standalone example script (44 lines)
-├── web_app.py                          # Flask web application (541 lines)
-├── web_ui.html                         # Web UI frontend (embedded in app)
-├── pyproject.toml                      # Python package metadata
-├── readme.md                           # Project documentation
-├── VERSION_1.1.md                      # Version history
-├── output.png                          # Example output (generated)
-└── output_8x.png                       # Scaled example output (generated)
+├── assets/                         # Example images for testing
+├── images/                         # Sample images (referenced in example.py)
+├── .planning/
+│   └── codebase/                   # Documentation (this directory)
+├── pyproject.toml                  # Python packaging metadata
+├── readme.md                       # User documentation
+├── VERSION_1.1.md                  # Release notes + planned features
+└── CLAUDE.md                       # Project instructions for agents
 ```
 
 ## Directory Purposes
 
-**src/perfect_pixel:**
-- Purpose: Core library code for pixel-perfect grid detection and refinement
-- Contains: Python modules implementing image processing algorithms
-- Key files: `perfect_pixel.py` (primary), `perfect_pixel_noCV2.py` (fallback), `__init__.py` (API)
-- Access: Imported as `from perfect_pixel import get_perfect_pixel`
+**`src/perfect_pixel/` (Core Library):**
+- Purpose: Pixel art grid detection and refinement algorithms
+- Contains: Grid detection (FFT/gradient), refinement, sampling (center/median/majority)
+- Key files: `perfect_pixel.py`, `perfect_pixel_noCV2.py`, `__init__.py`
+- Public API: Single function `get_perfect_pixel()` exported via `__init__.py`
 
-**integrations/comfyui:**
-- Purpose: Integration with ComfyUI image generation framework
-- Contains: Custom node wrapper for PerfectPixel functionality
-- Key files: `nodes_perfect_pixel.py` (node implementation)
-- Access: Loaded by ComfyUI custom node discovery mechanism
+**`integrations/comfyui/` (External Integration):**
+- Purpose: Adapt library for ComfyUI node system
+- Contains: Node class definition, tensor↔NumPy conversion, backend selection
+- Key files: `nodes_perfect_pixel.py` (class PerfectPixelNode)
 
-**images/:**
-- Purpose: Test/demo images for development and examples
-- Contains: Various image files (.jpeg, .png) for testing grid detection
-- Key files: test.jpeg, avatar.png, robot.jpeg, etc. (referenced in example.py)
+**`assets/`, `images/` (Test Data):**
+- Purpose: Reference images for testing and examples
+- Examples: `test.jpeg`, `avatar.png`, `robot.jpeg` (referenced in example.py)
+- Status: Committed to repo; used by demo script
 
-**assets/:**
-- Purpose: Documentation and visual examples
-- Contains: PNG images showing algorithm workflow, before/after comparisons
-- Key files: algorithm.png, process.png, origin.jpg, generated.png, refined.png
-
-**.planning/codebase/:**
-- Purpose: Generated analysis and documentation for development planning
-- Contains: Markdown files (ARCHITECTURE.md, STRUCTURE.md, etc.)
-- Generated by: GSD mapping tools
-- Used by: GSD planning and execution phases
+**`.planning/codebase/` (GSD Codebase Maps):**
+- Purpose: Architecture/structure/convention documentation for code generation agents
+- Auto-generated by orchestrator; consumed by phase planner
 
 ## Key File Locations
 
 **Entry Points:**
-
-| File | Purpose | How to Invoke |
-|------|---------|---------------|
-| `src/perfect_pixel/__init__.py` | Library API | `from perfect_pixel import get_perfect_pixel` |
-| `example.py` | CLI example | `python example.py` |
-| `web_app.py` | Web server | `python web_app.py` or `gunicorn web_app:app` |
+- `web_app.py` (line 539-541): Flask server startup, port 5010
+- `example.py` (line 1-19): CLI demo using library directly
+- `src/perfect_pixel/__init__.py` (line 8-16): Auto-selecting backend factory
+- `integrations/comfyui/PerfectPixelComfy/__init__.py`: ComfyUI node export
 
 **Configuration:**
+- `pyproject.toml`: Package version, dependencies, build config
+- `web_app.py` (line 16-17): Flask max upload size (32 MB)
+- `CLAUDE.md`: Hard constraints (don't touch core algorithm, keep backends in sync)
 
-| File | Purpose |
-|------|---------|
-| `pyproject.toml` | Package metadata, dependencies, build config |
-| `.gitignore` | Git version control rules |
+**Core Logic (Protected):**
+- `src/perfect_pixel/perfect_pixel.py`: OpenCV-based grid detection and sampling
+  - `estimate_grid_fft()`, `estimate_grid_gradient()`, `detect_grid_scale()`
+  - `refine_grids()`, `sample_center()`, `sample_median()`, `sample_majority()`
+  - `get_perfect_pixel()` — public API entry point
+- `src/perfect_pixel/perfect_pixel_noCV2.py`: NumPy equivalent implementations
+  - Must be kept behaviorally identical to OpenCV version
 
-**Core Logic:**
+**Web Application:**
+- `web_app.py` (lines 20-84): Palette file parsers (GPL, PAL, ACT, PNG)
+- `web_app.py` (lines 86-115): Palette file exporters
+- `web_app.py` (lines 119-149): Color space conversion (RGB → LAB)
+- `web_app.py` (lines 153-174): Color mapping algorithms
+- `web_app.py` (lines 176-299): Quantization (FASTOCTREE, MEDIANCUT, COVERAGE-BOOST)
+- `web_app.py` (lines 330-342): Image encoding/decoding helpers
+- `web_app.py` (lines 346-537): Flask route handlers (@app.route)
+  - `/` — Serve web_ui.html
+  - `/api/process` — Grid detection on uploaded image
+  - `/api/generate-palette` — Quantize image to palette
+  - `/api/apply-palette` — Map image pixels to palette
+  - `/api/parse-palette` — Parse uploaded palette file (ACT/GPL/PAL/PNG)
+  - `/api/export-palette` — Download palette as file
 
-| File | Purpose | Lines | Key Functions |
-|------|---------|-------|---|
-| `src/perfect_pixel/perfect_pixel.py` | Grid detection + sampling (OpenCV) | 436 | `get_perfect_pixel()`, `detect_grid_scale()`, `sample_center()`, `sample_median()`, `sample_majority()`, `refine_grids()` |
-| `src/perfect_pixel/perfect_pixel_noCV2.py` | Grid detection + sampling (NumPy) | 490 | `get_perfect_pixel()` (NumPy equivalent) |
-| `web_app.py` | Web API and utilities | 541 | Flask routes, palette functions, color space converters |
-
-**Testing:**
-
-- No automated tests directory present
-- Testing done via `example.py` (manual verification with matplotlib)
-- Example outputs: `output.png`, `output_8x.png` (generated test results)
+**Frontend UI:**
+- `web_ui.html` (lines 1-51279): Single self-contained HTML file
+  - Inline CSS (lines 7-XXX)
+  - Inline JavaScript
+  - Canvas-based image preview
+  - localStorage for user palette persistence
 
 ## Naming Conventions
 
 **Files:**
+- Library backends: `perfect_pixel.py` (CV2), `perfect_pixel_noCV2.py` (NumPy)
+- Web/integration: `web_app.py`, `nodes_perfect_pixel.py`
+- Configuration: lowercase `.py` extension; `CLAUDE.md`, `VERSION_1.1.md` (uppercase docs)
 
-- **Library modules:** Lowercase with underscores (`perfect_pixel.py`, `perfect_pixel_noCV2.py`)
-- **Scripts:** Lowercase with underscores (`web_app.py`, `example.py`)
-- **Documentation:** Uppercase markdown files (`.planning/codebase/ARCHITECTURE.md`)
-- **Test images:** Lowercase descriptive names (`test.jpeg`, `avatar.png`)
-- **Output files:** Descriptive names with extension (`output.png`, `output_8x.png`)
-
-**Directories:**
-
-- **Package directories:** Lowercase with underscores (`perfect_pixel`, `comfyui`)
-- **Category directories:** Lowercase with underscores (`integrations`, `images`)
-- **Hidden/system directories:** Prefixed with dot (`.git`, `.planning`)
-
-**Python Modules and Functions:**
-
-- **Module names:** Lowercase with underscores (`perfect_pixel`, `nodes_perfect_pixel`)
-- **Function names:** Lowercase with underscores (`get_perfect_pixel()`, `estimate_grid_fft()`, `sample_center()`)
-- **Internal/private functions:** Prefixed with underscore (`_nearest_indices()`, `_pillow_quantize()`, `_deduplicate_palette()`)
-- **Constants:** Uppercase (e.g., file path constants in Flask routes)
+**Functions:**
+- Public API: `get_perfect_pixel()` (only public export)
+- Private helpers: `_nearest_indices()`, `_pillow_quantize()`, `_deduplicate_palette()` (leading underscore)
+- Detection methods: `estimate_grid_fft()`, `estimate_grid_gradient()`, `detect_grid_scale()`
+- Sampling methods: `sample_center()`, `sample_median()`, `sample_majority()`
+- Palette ops: `parse_gpl()`, `export_act()`, `apply_palette_vector()`, `quantize_coverage_boost()`
+- Web routes: `@app.route("/api/X")` pattern
 
 **Variables:**
+- Dimensions: `H`, `W` (height, width), `C` (channels)
+- Grid parameters: `grid_w`, `grid_h`, `scale_col`, `scale_row`
+- Coordinates: `x_coords`, `y_coords`
+- Thresholds: `thr`, `rel_thr`, `min_dist`, `peak_width`
+- Single-letter math vars acceptable: `mx`, `mn`, `f`, `gx`, `gy` (magnitude, frequency, gradients)
 
-- **NumPy arrays/images:** Descriptive lowercase (`gray`, `rgb_array`, `pixels`, `palette`)
-- **Coordinates:** x/y pairs or arrays (`x_coords`, `y_coords`, `center_x`, `centers_y`)
-- **Dimensions/sizes:** Explicit suffixes (`grid_w`, `grid_h`, `export_scale`, `n_colors`)
-- **Configuration parameters:** Lowercase with underscores (`refine_intensity`, `peak_width`, `min_region_pct`)
-
-**Classes:**
-
-- No class-based architecture currently (functional programming style)
-- If classes are added: Use PascalCase (`GridDetector`, `PaletteQuantizer`)
+**Types/Classes:**
+- ComfyUI node: `PerfectPixelNode`
+- No other classes in core library (functional approach)
 
 ## Where to Add New Code
 
-**New Grid Detection Feature:**
-- Primary implementation: `src/perfect_pixel/perfect_pixel.py`
-- Fallback implementation: `src/perfect_pixel/perfect_pixel_noCV2.py`
-- Pattern: Implement same function signature in both files
-- Entry point: Modify `get_perfect_pixel()` to accept new parameters
+**New Feature (Grid Detection Enhancement):**
+- Primary code: `src/perfect_pixel/perfect_pixel.py` (OpenCV) + `src/perfect_pixel/perfect_pixel_noCV2.py` (NumPy)
+- MUST apply identical logic to both backends
+- Export via existing `get_perfect_pixel()` parameters
+- Test: `example.py` or new test file
+- Web integration: Expose via `/api/process` endpoint parameter if user-facing
 
-**New Sampling Strategy:**
-- Location: `src/perfect_pixel/perfect_pixel.py` (add new `sample_*()` function)
-- Pattern: Signature `sample_method(image, x_coords, y_coords) → downsampled_image`
-- Integration: Add condition in `get_perfect_pixel()` to call new method
-- Test: Verify with `example.py`
+**New Web Endpoint (Palette Operation):**
+- Implementation: Add function in `web_app.py` above route definitions
+- Route: Add `@app.route("/api/new-endpoint", methods=["POST"])` function
+- API contract: Form data → JSON response with error handling
+- Status codes: 400 (bad input), 422 (validation), 500 (server error)
+- Palette/image processing: Reuse `rgb_to_lab()`, `_nearest_indices()`, quantization functions
 
-**New Web API Endpoint:**
-- Location: `web_app.py`
-- Pattern: Decorate function with `@app.route()` decorator
-- Input handling: Use `request.form.get()` or `request.files[]` to access form data
-- Output: Return `jsonify()` for JSON responses or `Response()` for file downloads
-- Base64 encoding: Use `encode_png_b64()` for image transport
-- Example: See `/api/apply-palette` implementation (lines 425-462)
+**New Integration (e.g., Blender Plugin):**
+- Location: `integrations/[system-name]/`
+- Pattern: Wrap `get_perfect_pixel()`, convert system format → numpy RGB uint8, convert result → system format
+- Reference: `integrations/comfyui/` shows tensor↔numpy pattern
 
-**New Quantization Algorithm:**
-- Location: `web_app.py` (add helper function before `/api/generate-palette` route)
-- Pattern: Function takes `rgb_array`, `n_colors` → returns list of [r, g, b] tuples
-- Integration: Add condition in `api_generate_palette()` to call new function
-- Example: See `quantize_coverage_boost()` (lines 207-299)
-
-**New Palette File Format:**
-- Parsers: `web_app.py` (add `parse_*()` function before line 350)
-- Exporters: `web_app.py` (add `export_*()` function before line 329)
-- Integration points:
-  - Add condition in `api_parse_palette()` route (line 475+)
-  - Add condition in `api_export_palette()` route (line 516+)
-- Pattern: Parsers return list of [r, g, b] lists; exporters return bytes or string
-
-**New ComfyUI Integration:**
-- Location: `integrations/comfyui/PerfectPixelComfy/nodes_perfect_pixel.py`
-- Pattern: Implement ComfyUI node class following ComfyUI conventions
-- Reference: See existing `nodes_perfect_pixel.py` implementation
-- Registration: Node automatically discovered by ComfyUI
-
-**Utility Functions:**
-- **Color space operations:** `web_app.py` (lines 117-150)
-- **Image encoding:** `web_app.py` (lines 329-341)
-- **Palette operations:** `web_app.py` (various sections)
-
-**Tests:**
-- Create: `tests/` directory at project root
-- Pattern: `test_<module>.py` for each source module
-- Example: `tests/test_perfect_pixel.py` for `src/perfect_pixel/perfect_pixel.py`
-- Run: Use pytest or unittest discovery
+**Shared Utilities:**
+- Color space: Add to web_app.py color section (lines 119-149)
+- Image encode/decode: Extend helpers section (lines 330-342)
+- NumPy-only functions: Add to `perfect_pixel_noCV2.py`
+- OpenCV-specific: Add to `perfect_pixel.py`
 
 ## Special Directories
 
-**node_modules / venv / __pycache__:**
-- Purpose: Generated dependency directories (not in repo)
-- Generated: During `pip install` or `python -m venv`
-- Committed: No (listed in `.gitignore`)
+**`src/perfect_pixel/` (Published Library):**
+- Purpose: Code published to PyPI as `perfect-pixel` package
+- Generated: No
+- Committed: Yes, all files
+- Stability: High — breaking changes not allowed
+- Consumers: External projects, web app, integrations
 
-**.git:**
-- Purpose: Git version control metadata
-- Generated: By `git init`
-- Committed: No (system directory)
+**`integrations/` (Optional Extensions):**
+- Purpose: Third-party system adapters
+- Generated: No
+- Committed: Yes
+- Stability: Medium — updates don't break core library
 
-**.planning/codebase/:**
-- Purpose: Auto-generated documentation for GSD orchestration
-- Generated: By `/gsd:map-codebase` command
-- Committed: Optional (for team documentation)
-- Contents: ARCHITECTURE.md, STRUCTURE.md, CONVENTIONS.md, TESTING.md, CONCERNS.md, STACK.md, INTEGRATIONS.md
+**`.planning/codebase/` (Agent Documentation):**
+- Purpose: Reference docs for code generation
+- Generated: Yes (by GSD mapper tool)
+- Committed: Yes (in .git)
+- Stability: Updated as architecture changes
 
-**images/ and assets/:**
-- Purpose: Reference images and examples
-- Committed: Yes (tracked in git)
-- Size: Should keep lightweight (use .gitignore if large)
-
-**output* files:**
-- Purpose: Generated test outputs
-- Generated: By running `example.py` or web API
-- Committed: No (add to `.gitignore` if not needed)
+**`assets/`, `images/` (Test Data):**
+- Purpose: Sample images for demos and testing
+- Generated: No (user-supplied)
+- Committed: Yes
+- Not distributed in PyPI wheel (would bloat package)
 
 ---
 
