@@ -430,10 +430,26 @@
       const zc = document.getElementById('zoom-container');
       zc.style.left = PAD + 'px';
       zc.style.top  = PAD + 'px';
+      // Apply zoom transform (MUST happen before clampScroll uses EditorState.zoom)
+      document.getElementById('zoom-container').style.transform = `scale(${zoom})`;
+      const display = Number.isInteger(zoom) ? zoom + 'x' : zoom.toFixed(1) + 'x';
+      document.getElementById('zoom-display').textContent = display;
       // Center scroll: pivot = canvas center → align to viewport center
       area.scrollLeft = PAD + W / 2 - area.clientWidth  / 2;
       area.scrollTop  = PAD + H / 2 - area.clientHeight / 2;
       clampScroll(area);
+    }
+
+    /**
+     * Snap zoom levels for buttons and keyboard shortcuts (powers of 2).
+     * Trackpad pinch bypasses this and uses continuous float zoom.
+     */
+    const SNAP_LEVELS = [0.25, 0.5, 1, 2, 4, 8, 16, 32, 64];
+    function snapZoomIn(current) {
+      return SNAP_LEVELS.find(l => l > current + 0.01) ?? SNAP_LEVELS[SNAP_LEVELS.length - 1];
+    }
+    function snapZoomOut(current) {
+      return [...SNAP_LEVELS].reverse().find(l => l < current - 0.01) ?? SNAP_LEVELS[0];
     }
 
     /**
@@ -536,8 +552,8 @@
         // Trackpad pinch (and Ctrl+scroll) → zoom
         // Browser synthesizes pinch as wheel event with e.ctrlKey = true
         if (e.ctrlKey) {
-          // Trackpad pinch — sensitivity ≈ 1/4 of previous (1.025 vs 1.1)
-          const factor = e.deltaY < 0 ? 1.025 : 1 / 1.025;
+          // Trackpad pinch — continuous zoom, factor ≈ 50% of original 1.1
+          const factor = e.deltaY < 0 ? 1.05 : 1 / 1.05;
           applyZoom(EditorState.zoom * factor, e.clientX, e.clientY);
           return;
         }
@@ -551,28 +567,28 @@
         clampScroll(canvasArea);
       }, { passive: false });
 
-      // Top bar Zoom + / - buttons (pivot = canvas area center, multiplicative ×1.25)
+      // Top bar Zoom + / - buttons (snap to power-of-2 levels: 0.25/0.5/1/2/4/8/16/32/64)
       document.getElementById('btn-zoom-in').addEventListener('click', () => {
         const rect = canvasArea.getBoundingClientRect();
-        applyZoom(EditorState.zoom * 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
+        applyZoom(snapZoomIn(EditorState.zoom), rect.left + rect.width / 2, rect.top + rect.height / 2);
       });
       document.getElementById('btn-zoom-out').addEventListener('click', () => {
         const rect = canvasArea.getBoundingClientRect();
-        applyZoom(EditorState.zoom / 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
+        applyZoom(snapZoomOut(EditorState.zoom), rect.left + rect.width / 2, rect.top + rect.height / 2);
       });
 
-      // Keyboard zoom (Ctrl+= / Ctrl+-, multiplicative ×1.25)
+      // Keyboard zoom (Cmd+= / Cmd+-, snap to power-of-2 levels)
       document.addEventListener('keydown', e => {
         if (e.target.matches('input, textarea')) return;
         if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
           e.preventDefault();
           const rect = canvasArea.getBoundingClientRect();
-          applyZoom(EditorState.zoom * 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
+          applyZoom(snapZoomIn(EditorState.zoom), rect.left + rect.width / 2, rect.top + rect.height / 2);
         }
         if ((e.ctrlKey || e.metaKey) && e.key === '-') {
           e.preventDefault();
           const rect = canvasArea.getBoundingClientRect();
-          applyZoom(EditorState.zoom / 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
+          applyZoom(snapZoomOut(EditorState.zoom), rect.left + rect.width / 2, rect.top + rect.height / 2);
         }
       });
     });
