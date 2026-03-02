@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfect Pixel — 本地版</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a22;
+    --surface2: #22222e;
+    --border: #2e2e3e;
+    --accent: #7c6af7;
+    --accent-hover: #9080ff;
+    --text: #e8e6f0;
+    --text-muted: #7a7890;
+    --success: #4ade80;
+    --error: #f87171;
+    --warning: #fbbf24;
+    --radius: 10px;
+  }
+
+  /* Fix body to viewport so panels scroll independently */
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 17px; font-weight: 700; }
+  header .badge { font-size: 11px; background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
+
+  .layout {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    grid-template-rows: 1fr;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar (scrolls independently) ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow-y: auto;
+    min-height: 0;   /* grid items default to min-height:auto; 0 lets overflow activate */
+  }
+  /* Without flex-shrink:0, flex algorithm squashes children to fit the container
+     instead of overflowing — scroll would never trigger. */
+  .sidebar > * { flex-shrink: 0; }
+
+  .section-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.9px; color: var(--text-muted); margin-bottom: 5px;
+  }
+
+
+  .control-group { display: flex; flex-direction: column; gap: 4px; }
+
+  select, input[type=number], input[type=text] {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); padding: 6px 9px; font-size: 13px;
+    outline: none; transition: border-color .2s;
+  }
+  select:focus, input[type=number]:focus, input[type=text]:focus { border-color: var(--accent); }
+
+  .slider-row { display: flex; align-items: center; gap: 8px; }
+  input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; min-width: 0; }
+  .slider-val { font-size: 12px; color: var(--text-muted); width: 30px; text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+  /* narrow number input for color count */
+  .n-colors-input { width: 54px !important; flex-shrink: 0; padding: 4px 6px !important; font-size: 12px !important; }
+
+  .checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .checkbox-row input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
+
+  .btn {
+    padding: 8px 12px; border-radius: 7px; border: none; font-size: 13px;
+    font-weight: 600; cursor: pointer; transition: background .2s, opacity .2s; white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
+  .btn-secondary:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 5px 9px; font-size: 12px; }
+  .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+
+  /* ── Palette section ── */
+  .palette-section { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .palette-header {
+    padding: 9px 12px; background: var(--surface2);
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none;
+  }
+  .palette-header .title { font-size: 12px; font-weight: 700; }
+  .palette-header .chevron { font-size: 10px; color: var(--text-muted); transition: transform .2s; }
+  .palette-header.open .chevron { transform: rotate(180deg); }
+  .palette-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .palette-body.hidden { display: none; }
+
+  /* Toggle switch */
+  .toggle-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute; inset: 0; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; cursor: pointer; transition: background .2s;
+  }
+  .toggle-track::after {
+    content: ''; position: absolute; top: 2px; left: 2px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--text-muted); transition: transform .2s, background .2s;
+  }
+  .toggle-switch input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+  .toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); background: #fff; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; }
+  .tab-btn {
+    flex: 1; padding: 6px; border-radius: 6px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-muted); font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+  }
+  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* Palette file upload zone */
+  .pal-upload-zone {
+    border: 2px dashed var(--border); border-radius: 7px;
+    padding: 14px 10px; text-align: center; cursor: pointer;
+    position: relative; transition: border-color .2s, background .2s;
+    font-size: 12px; color: var(--text-muted);
+  }
+  .pal-upload-zone:hover, .pal-upload-zone.dragover { border-color: var(--accent); background: rgba(124,106,247,.06); }
+  .pal-upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  /* Swatches */
+  .swatches-label { display: flex; align-items: center; justify-content: space-between; }
+  .swatches-count { font-size: 11px; color: var(--text-muted); }
+  .swatches-grid {
+    display: flex; flex-wrap: wrap; gap: 4px; max-height: 140px; overflow-y: auto;
+    padding: 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  }
+  .swatch {
+    width: 28px; height: 28px; border-radius: 4px; cursor: pointer;
+    border: 2px solid transparent; position: relative; flex-shrink: 0;
+    transition: transform .1s, border-color .1s;
+  }
+  .swatch:hover { transform: scale(1.15); border-color: rgba(255,255,255,.5); z-index: 2; }
+  .swatch .del-btn {
+    display: none; position: absolute; top: -5px; right: -5px;
+    width: 14px; height: 14px; border-radius: 50%; background: var(--error); color: #fff;
+    font-size: 9px; font-weight: 900; align-items: center; justify-content: center;
+    cursor: pointer; border: none; line-height: 1;
+  }
+  .swatch:hover .del-btn { display: flex; }
+  .swatches-empty { color: var(--text-muted); font-size: 12px; padding: 8px; text-align: center; }
+
+  /* Color editor popup */
+  .color-popup {
+    position: fixed; z-index: 999; background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 9px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5); min-width: 200px;
+  }
+  .color-popup .popup-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+  .color-popup input[type=color] { width: 100%; height: 36px; border: none; border-radius: 6px; cursor: pointer; padding: 2px; background: var(--surface2); }
+  .color-popup .rgb-row { display: flex; gap: 5px; align-items: center; }
+  .color-popup .rgb-row label { font-size: 11px; color: var(--text-muted); width: 12px; flex-shrink: 0; }
+  .color-popup .rgb-row input { padding: 4px 6px; font-size: 12px; }
+  .color-popup .hex-row { display: flex; gap: 5px; align-items: center; }
+  .color-popup .hex-row label { font-size: 11px; color: var(--text-muted); }
+  .color-popup .hex-row input { font-family: monospace; font-size: 12px; padding: 4px 6px; }
+  .color-popup .popup-actions { display: flex; gap: 6px; }
+
+  /* Save/load */
+  .save-row { display: flex; gap: 6px; }
+  .save-row input { flex: 1; }
+
+  /* Custom dropdown for saved palettes */
+  .custom-select { position: relative; }
+  .custom-select-trigger {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); padding: 6px 9px; font-size: 13px;
+    cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    user-select: none; transition: border-color .2s;
+  }
+  .custom-select-trigger:hover { border-color: var(--accent); }
+  .custom-select.open .custom-select-trigger { border-color: var(--accent); }
+  .custom-select-trigger .caret { font-size: 9px; color: var(--text-muted); transition: transform .2s; }
+  .custom-select.open .caret { transform: rotate(180deg); }
+  .custom-select-options {
+    display: none; position: absolute; z-index: 200; top: calc(100% + 4px); left: 0; right: 0;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    max-height: 280px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  .custom-select.open .custom-select-options { display: block; }
+  .custom-option {
+    padding: 8px 12px; cursor: pointer; transition: background .1s; border-bottom: 1px solid var(--border);
+  }
+  .custom-option:last-child { border-bottom: none; }
+  .custom-option:hover { background: rgba(124,106,247,.1); }
+  .custom-option.selected { background: rgba(124,106,247,.15); }
+  .custom-option-empty { padding: 10px 12px; color: var(--text-muted); font-size: 12px; text-align: center; }
+  .option-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .option-swatches { display: flex; flex-wrap: wrap; gap: 2px; }
+  .option-swatches span { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  /* Export */
+  .export-row { display: flex; gap: 5px; }
+  .export-row .btn { flex: 1; font-size: 11px; padding: 6px 4px; }
+
+  /* Mapping modes */
+  .mode-group { display: flex; flex-direction: column; gap: 5px; }
+  .mode-option {
+    display: flex; align-items: flex-start; gap: 7px; cursor: pointer;
+    padding: 5px 7px; border-radius: 6px; border: 1px solid transparent; transition: border-color .15s;
+  }
+  .mode-option:has(input:checked) { border-color: var(--accent); background: rgba(124,106,247,.06); }
+  .mode-option input[type=radio] { accent-color: var(--accent); margin-top: 1px; cursor: pointer; flex-shrink: 0; }
+  .mode-option .mode-label { font-size: 12px; font-weight: 600; }
+  .mode-option .mode-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); }
+
+  /* ── Main area (scrolls independently) ── */
+  .main { padding: 20px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; min-height: 0; }
+
+  .status-bar { height: 34px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite; display: none;
+  }
+  .loading .spinner { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status-text { font-size: 13px; color: var(--text-muted); }
+  .status-text.error { color: var(--error); }
+  .status-text.success { color: var(--success); }
+  .status-text.warning { color: var(--warning); }
+
+  .grid-info {
+    display: none; align-items: center; gap: 6px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 6px; padding: 3px 10px;
+    font-size: 12px; font-weight: 600;
+  }
+  .grid-info .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
+
+  /* Image cards */
+  .images-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .img-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden;
+  }
+  .img-card-header {
+    padding: 9px 13px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .img-card-header .card-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; flex-shrink: 0; }
+  .card-meta { font-size: 11px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .img-card-body {
+    flex: 1; min-height: 180px; display: flex; align-items: center; justify-content: center;
+    background: repeating-conic-gradient(#1e1e28 0% 25%, #16161e 0% 50%) 0 0 / 20px 20px;
+    padding: 10px; position: relative;
+  }
+  .img-card-body img { max-width: 100%; max-height: 380px; object-fit: contain; image-rendering: pixelated; border-radius: 3px; }
+  .img-placeholder { color: var(--text-muted); font-size: 12px; text-align: center; line-height: 1.8; }
+
+  /* Input card — also serves as drop zone */
+  .input-dropzone { cursor: pointer; transition: outline .15s; }
+  .input-dropzone:hover { outline: 2px dashed rgba(124,106,247,.4); outline-offset: -4px; }
+  .input-dropzone.dragover { outline: 2px dashed var(--accent); outline-offset: -4px; background: rgba(124,106,247,.06) !important; }
+
+  .btn-download {
+    margin: 8px 12px; padding: 6px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text); font-size: 11px; font-weight: 600;
+    cursor: pointer; text-align: center; transition: border-color .2s, background .2s;
+    display: none; text-decoration: none;
+  }
+  .btn-download:hover { border-color: var(--accent); background: rgba(124,106,247,.1); }
+
+  /* Palette strip in card header */
+  .palette-strip { display: flex; gap: 2px; overflow: hidden; flex-shrink: 0; }
+  .palette-strip-dot { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Perfect Pixel</h1>
+  <span class="badge">本地版</span>
+</header>
+
+<div class="layout">
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+
+    <!-- Hidden file input (triggered by Input card click/drag) -->
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+
+    <!-- PerfectPixel params -->
+    <div>
+      <div class="section-label">像素处理参数</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="control-group">
+          <label>采样方式</label>
+          <select id="sampleMethod">
+            <option value="center">Center（中心采样）</option>
+            <option value="median">Median（中值采样）</option>
+            <option value="majority">Majority（K-means 主色）</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>网格精细度</label>
+          <div class="slider-row">
+            <input type="range" id="refineIntensity" min="0" max="0.5" step="0.05" value="0.3">
+            <span class="slider-val" id="refineVal">0.30</span>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>输出放大倍数</label>
+          <input type="number" id="exportScale" value="8" min="1" max="16">
+        </div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="fixSquare" checked>
+          <span>强制方形输出</span>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="processBtn" disabled>处理图片</button>
+
+    <hr class="divider">
+
+    <!-- ── Palette section ── -->
+    <div class="palette-section">
+      <div class="palette-header" id="paletteHeader">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="title">色卡限制</span>
+          <label class="toggle-switch" onclick="event.stopPropagation()">
+            <input type="checkbox" id="paletteEnabled">
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+        <span class="chevron">▼</span>
+      </div>
+
+      <div class="palette-body hidden" id="paletteBody">
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="generate">自动生成</button>
+          <button class="tab-btn" data-tab="upload">上传色卡</button>
+        </div>
+
+        <!-- Tab: auto generate -->
+        <div class="tab-pane active" id="tab-generate">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="control-group">
+              <label>颜色数量</label>
+              <div class="slider-row">
+                <input type="range" id="nColors" min="2" max="64" step="1" value="16">
+                <input type="number" id="nColorsInput" class="n-colors-input" value="16" min="1">
+              </div>
+            </div>
+            <div class="control-group">
+              <label>生成算法</label>
+              <select id="genAlgorithm">
+                <option value="fastoctree">快速八叉树（默认，速度最快）</option>
+                <option value="mediancut">中值切割（均衡分配色彩空间）</option>
+                <option value="boost">覆盖增强（智能识别小色块区域）★</option>
+              </select>
+            </div>
+            <div id="boostParams" class="control-group" style="display:none;">
+              <label>噪点过滤阈值</label>
+              <div class="slider-row">
+                <input type="range" id="minRegionPct" min="0.01" max="5" step="0.01" value="1.0">
+                <input type="number" id="minRegionPctInput" class="n-colors-input" value="1.0" min="0.01" max="100" step="0.01">
+              </div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">仅保留面积 ≥ X% 的连通色块区域</div>
+            </div>
+            <button class="btn btn-secondary" id="generateBtn" disabled style="width:100%;">生成色卡</button>
+          </div>
+        </div>
+
+        <!-- Tab: upload palette -->
+        <div class="tab-pane" id="tab-upload">
+          <div class="pal-upload-zone" id="palUploadZone">
+            <input type="file" id="palFileInput" accept=".act,.gpl,.pal,.png">
+            <div>上传 .act .gpl .pal .png</div>
+            <div id="palFilename" style="margin-top:4px;font-size:11px;color:var(--accent);"></div>
+          </div>
+        </div>
+
+        <!-- Current palette swatches -->
+        <div>
+          <div class="swatches-label">
+            <span class="section-label" style="margin:0;">当前色卡</span>
+            <span class="swatches-count" id="swatchCount">0 色</span>
+          </div>
+          <div class="swatches-grid" id="swatchesGrid">
+            <span class="swatches-empty">色卡为空</span>
+          </div>
+          <button class="btn btn-ghost" id="addColorBtn" style="margin-top:6px;width:100%;">+ 添加颜色</button>
+        </div>
+
+        <!-- Save / load -->
+        <div>
+          <div class="section-label">保存 / 加载</div>
+          <div class="save-row">
+            <input type="text" id="paletteName" placeholder="色卡名称...">
+            <button class="btn btn-secondary" id="savePaletteBtn" style="flex-shrink:0;">保存</button>
+          </div>
+          <!-- Custom dropdown replaces <select> -->
+          <div class="custom-select" id="savedPalettesDropdown" style="margin-top:6px;">
+            <div class="custom-select-trigger" id="savedPaletteTrigger">
+              <span id="savedPaletteTriggerText">— 选择已保存色卡 —</span>
+              <span class="caret">▼</span>
+            </div>
+            <div class="custom-select-options" id="savedPaletteOptions"></div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <button class="btn btn-secondary" id="loadPaletteBtn" style="flex:1;font-size:12px;">加载</button>
+            <button class="btn btn-secondary" id="deletePaletteBtn" style="flex:1;font-size:12px;color:var(--error);">删除</button>
+          </div>
+        </div>
+
+        <!-- Export -->
+        <div>
+          <div class="section-label">导出</div>
+          <div class="export-row">
+            <button class="btn btn-ghost" id="exportAct">.act</button>
+            <button class="btn btn-ghost" id="exportGpl">.gpl</button>
+            <button class="btn btn-ghost" id="exportPal">.pal</button>
+          </div>
+        </div>
+
+        <!-- Mapping mode -->
+        <div>
+          <div class="section-label">映射模式</div>
+          <div class="mode-group">
+            <label class="mode-option">
+              <input type="radio" name="mappingMode" value="vector" checked>
+              <div>
+                <div class="mode-label">向量匹配</div>
+                <div class="mode-desc">RGB 欧氏距离，最直接</div>
+              </div>
+            </label>
+            <label class="mode-option" id="modeSwapOption">
+              <input type="radio" name="mappingMode" value="swap">
+              <div>
+                <div class="mode-label">色卡替换</div>
+                <div class="mode-desc">先量化图像生成中间调色板，防止相近色扎堆映射</div>
+              </div>
+            </label>
+            <label class="mode-option">
+              <input type="radio" name="mappingMode" value="perceptual">
+              <div>
+                <div class="mode-label">感知匹配</div>
+                <div class="mode-desc">LAB 色彩空间，更符合人眼感知</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="applyPaletteBtn" disabled>应用色卡</button>
+
+      </div><!-- /palette-body -->
+    </div><!-- /palette-section -->
+
+  </aside>
+
+  <!-- ── Main area ── -->
+  <main class="main">
+    <div class="status-bar" id="statusBar">
+      <div class="spinner"></div>
+      <span class="status-text" id="statusText">上传一张图片开始处理</span>
+      <div class="grid-info" id="gridInfo">
+        <div class="dot"></div>
+        <span id="gridText"></span>
+      </div>
+    </div>
+
+    <div class="images-grid" id="imagesGrid">
+      <!-- Input card — doubles as drop zone -->
+      <div class="img-card">
+        <div class="img-card-header"><span class="card-title">原图 Input</span></div>
+        <div class="img-card-body input-dropzone" id="inputBody">
+          <div class="img-placeholder"><div style="font-size:30px;margin-bottom:6px;">🖼️</div>点击或拖拽<br>像素风格图片到此处</div>
+        </div>
+      </div>
+
+      <div class="img-card">
+        <div class="img-card-header"><span class="card-title">像素艺术 Output</span></div>
+        <div class="img-card-body" id="outputBody">
+          <div class="img-placeholder">等待处理...</div>
+        </div>
+        <a class="btn-download" id="dlExact" download="output.png">↓ 下载精准版</a>
+        <a class="btn-download" id="dlScaled" download="output_scaled.png">↓ 下载放大版</a>
+
+      </div>
+
+      <div class="img-card" id="paletteResultCard" style="display:none;">
+        <div class="img-card-header">
+          <span class="card-title">色卡结果</span>
+          <div style="display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden;">
+            <span class="card-meta" id="paletteResultMeta"></span>
+            <div class="palette-strip" id="paletteStrip"></div>
+          </div>
+        </div>
+        <div class="img-card-body" id="paletteResultBody">
+          <div class="img-placeholder">点击「应用色卡」</div>
+        </div>
+        <a class="btn-download" id="dlPaletteExact" download="output_palette.png">↓ 下载精准版</a>
+        <a class="btn-download" id="dlPaletteScaled" download="output_palette_scaled.png">↓ 下载放大版</a>
+      </div>
+    </div>
+
+
+  </main>
+</div>
+
+<!-- Color editor popup -->
+<div class="color-popup" id="colorPopup" style="display:none;">
+  <div class="popup-title">编辑颜色</div>
+  <input type="color" id="popupColorPicker">
+  <div class="rgb-row">
+    <label>R</label><input type="number" id="popupR" min="0" max="255">
+    <label>G</label><input type="number" id="popupG" min="0" max="255">
+    <label>B</label><input type="number" id="popupB" min="0" max="255">
+  </div>
+  <div class="hex-row">
+    <label>#</label><input type="text" id="popupHex" maxlength="6" placeholder="RRGGBB">
+  </div>
+  <div class="popup-actions">
+    <button class="btn btn-primary" id="popupDone" style="flex:1;">完成</button>
+    <button class="btn btn-secondary" id="popupDelete" style="flex:1;color:var(--error);">删除</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════════
+let selectedFile       = null;
+let currentPixelArtB64 = null;
+let currentPalette     = [];
+let editingSwatchIdx   = null;
+let selectedPaletteKey = "";
+let currentPaletteMeta = { name: "", source: "upload", algorithm: "", count: 0 };
+
+// ═══════════════════════════════════════════════════════
+//  Helpers
+// ═══════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+
+function setStatus(msg, type = "") {
+  $("statusText").textContent = msg;
+  $("statusText").className = "status-text" + (type ? " " + type : "");
+}
+function setLoading(on) {
+  $("statusBar").classList.toggle("loading", on);
+  $("processBtn").disabled = on || !selectedFile;
+  $("applyPaletteBtn").disabled = on || !currentPixelArtB64 || currentPalette.length === 0 || !$("paletteEnabled").checked;
+}
+function rgbToHex(r, g, b) {
+  return [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+function hexToRgb(hex) {
+  hex = hex.replace("#", "");
+  if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+  const n = parseInt(hex, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  Slider sync
+// ═══════════════════════════════════════════════════════
+$("refineIntensity").addEventListener("input", () => {
+  $("refineVal").textContent = parseFloat($("refineIntensity").value).toFixed(2);
+});
+
+// minRegionPct: slider ↔ number input sync
+$("minRegionPct").addEventListener("input", () => {
+  $("minRegionPctInput").value = parseFloat($("minRegionPct").value).toFixed(2);
+});
+$("minRegionPctInput").addEventListener("input", () => {
+  const v = parseFloat($("minRegionPctInput").value);
+  if (!isNaN(v) && v >= 0.01) {
+    $("minRegionPct").value = Math.min(5, Math.max(0.01, v));
+  }
+});
+
+// n_colors: slider ↔ number input sync
+$("nColors").addEventListener("input", () => {
+  $("nColorsInput").value = $("nColors").value;
+});
+$("nColorsInput").addEventListener("input", () => {
+  const v = parseInt($("nColorsInput").value);
+  if (!isNaN(v) && v >= 1) {
+    // Clamp slider to its range, but don't clamp the input itself
+    $("nColors").value = Math.min(64, Math.max(2, v));
+  }
+});
+
+// Show/hide boost params
+$("genAlgorithm").addEventListener("change", () => {
+  $("boostParams").style.display = $("genAlgorithm").value === "boost" ? "block" : "none";
+});
+
+// ═══════════════════════════════════════════════════════
+//  File upload — Input card (click + drag)
+// ═══════════════════════════════════════════════════════
+$("fileInput").addEventListener("change", () => {
+  if ($("fileInput").files[0]) selectFile($("fileInput").files[0]);
+});
+const inputBody = $("inputBody");
+inputBody.addEventListener("click", e => {
+  if (e.target.tagName === "IMG") return; // clicking existing image still triggers file picker
+  $("fileInput").click();
+});
+inputBody.addEventListener("dragover", e => { e.preventDefault(); inputBody.classList.add("dragover"); });
+inputBody.addEventListener("dragleave", () => inputBody.classList.remove("dragover"));
+inputBody.addEventListener("drop", e => {
+  e.preventDefault(); inputBody.classList.remove("dragover");
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith("image/")) selectFile(file);
+});
+
+function selectFile(file) {
+  selectedFile = file;
+  $("processBtn").disabled = false;
+  $("generateBtn").disabled = false;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    inputBody.innerHTML = `<img src="${e.target.result}" alt="input">`;
+  };
+  reader.readAsDataURL(file);
+
+  resetOutput();
+  setStatus("已选择图片，点击「处理图片」开始");
+}
+
+function resetOutput() {
+  $("outputBody").innerHTML = `<div class="img-placeholder">点击「处理图片」开始</div>`;
+  $("dlExact").style.display = "none";
+  $("dlScaled").style.display = "none";
+  $("paletteResultCard").style.display = "none";
+  $("gridInfo").style.display = "none";
+  currentPixelArtB64 = null;
+  $("applyPaletteBtn").disabled = true;
+}
+
+// ═══════════════════════════════════════════════════════
+//  Process image
+// ═══════════════════════════════════════════════════════
+$("processBtn").addEventListener("click", async () => {
+  if (!selectedFile) return;
+  setLoading(true); setStatus("处理中，请稍候...");
+  $("outputBody").innerHTML = `<div class="img-placeholder">处理中...</div>`;
+  $("dlExact").style.display = "none"; $("dlScaled").style.display = "none";
+  $("paletteResultCard").style.display = "none";
+
+  const fd = new FormData();
+  fd.append("image", selectedFile);
+  fd.append("sample_method", $("sampleMethod").value);
+  fd.append("refine_intensity", $("refineIntensity").value);
+  fd.append("fix_square", $("fixSquare").checked ? "true" : "false");
+  fd.append("export_scale", $("exportScale").value);
+
+  try {
+    const res = await fetch("/api/process", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) { setStatus("错误：" + (data.error || res.statusText), "error"); return; }
+
+    currentPixelArtB64 = data.output;
+    const outSrc    = "data:image/png;base64," + data.output;
+    const scaledSrc = "data:image/png;base64," + data.output_scaled;
+
+    $("outputBody").innerHTML = `<img src="${scaledSrc}" alt="output">`;
+    $("dlExact").href = outSrc;   $("dlExact").style.display = "block";
+    $("dlScaled").href = scaledSrc; $("dlScaled").style.display = "block";
+    $("gridText").textContent = `网格 ${data.grid_w} × ${data.grid_h}`;
+    $("gridInfo").style.display = "inline-flex";
+
+    if ($("paletteEnabled").checked && currentPalette.length > 0) {
+      $("applyPaletteBtn").disabled = false;
+    }
+    setStatus(`完成！检测到网格 ${data.grid_w}×${data.grid_h}`, "success");
+  } catch (err) {
+    setStatus("请求失败：" + err.message, "error");
+    $("outputBody").innerHTML = `<div class="img-placeholder" style="color:var(--error)">请求失败</div>`;
+  } finally {
+    setLoading(false);
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  Palette section toggle / tabs
+// ═══════════════════════════════════════════════════════
+const paletteHeader = $("paletteHeader");
+const paletteBody   = $("paletteBody");
+
+paletteHeader.addEventListener("click", () => {
+  const open = !paletteBody.classList.contains("hidden");
+  paletteBody.classList.toggle("hidden", open);
+  paletteHeader.classList.toggle("open", !open);
+});
+
+$("paletteEnabled").addEventListener("change", () => {
+  const on = $("paletteEnabled").checked;
+  if (on) { paletteBody.classList.remove("hidden"); paletteHeader.classList.add("open"); }
+  $("applyPaletteBtn").disabled = !on || !currentPixelArtB64 || currentPalette.length === 0;
+});
+
+function getActiveTab() {
+  const btn = document.querySelector(".tab-btn.active");
+  return btn ? btn.dataset.tab : "generate";
+}
+
+function updateSwapModeVisibility() {
+  const isGenerate = getActiveTab() === "generate";
+  const swapOption = $("modeSwapOption");
+  swapOption.style.display = isGenerate ? "none" : "";
+  // If swap was selected but now hidden, switch to vector
+  if (isGenerate && document.querySelector("input[name=mappingMode][value='swap']").checked) {
+    document.querySelector("input[name=mappingMode][value='vector']").checked = true;
+  }
+}
+
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+    btn.classList.add("active");
+    $("tab-" + btn.dataset.tab).classList.add("active");
+    updateSwapModeVisibility();
+  });
+});
+// Set initial state
+updateSwapModeVisibility();
+
+// ═══════════════════════════════════════════════════════
+//  Palette generation
+// ═══════════════════════════════════════════════════════
+const ALGO_NAMES = { fastoctree: "八叉树", mediancut: "中值切割", boost: "覆盖增强" };
+
+$("generateBtn").addEventListener("click", async () => {
+  if (!selectedFile) return;
+  setLoading(true);
+  const algo = $("genAlgorithm").value;
+  setStatus(`正在生成色卡（${ALGO_NAMES[algo]}）...`);
+
+  const n = parseInt($("nColorsInput").value) || parseInt($("nColors").value) || 16;
+  const fd = new FormData();
+  fd.append("algorithm", algo);
+  fd.append("n_colors", n);
+  if (algo === "boost") fd.append("min_region_pct", $("minRegionPctInput").value || $("minRegionPct").value);
+
+  try {
+    let b64;
+    if (currentPixelArtB64) {
+      b64 = currentPixelArtB64;
+    } else {
+      b64 = (await fileToBase64(selectedFile)).split(",")[1];
+    }
+    fd.append("image", b64);
+
+    const res = await fetch("/api/generate-palette", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) { setStatus("生成失败：" + (data.error || ""), "error"); return; }
+
+    currentPaletteMeta = { name: "", source: "generate", algorithm: algo, count: data.count };
+    setCurrentPalette(data.palette);
+    setStatus(`色卡已生成：${data.count} 色（${ALGO_NAMES[algo]}）`, "success");
+  } catch (err) {
+    setStatus("生成色卡失败：" + err.message, "error");
+  } finally {
+    setLoading(false);
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+//  Palette file upload
+// ═══════════════════════════════════════════════════════
+$("palFileInput").addEventListener("change", async () => {
+  const file = $("palFileInput").files[0];
+  if (file) await uploadPaletteFile(file);
+});
+const palUZ = $("palUploadZone");
+palUZ.addEventListener("dragover", e => { e.preventDefault(); palUZ.classList.add("dragover"); });
+palUZ.addEventListener("dragleave", () => palUZ.classList.remove("dragover"));
+palUZ.addEventListener("drop", async e => {
+  e.preventDefault(); palUZ.classList.remove("dragover");
+  const file = e.dataTransfer.files[0];
+  if (file) await uploadPaletteFile(file);
+});
+
+async function uploadPaletteFile(file) {
+  setStatus("解析色卡文件...");
+  const fd = new FormData();
+  fd.append("file", file);
+  try {
+    const res = await fetch("/api/parse-palette", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) { setStatus("解析失败：" + (data.error || ""), "error"); return; }
+    currentPaletteMeta = { name: data.name, source: "upload", algorithm: "", count: data.palette.length };
+    setCurrentPalette(data.palette);
+    $("palFilename").textContent = file.name;
+    if (data.name) $("paletteName").value = data.name;
+    setStatus(`已加载色卡「${data.name}」：${data.palette.length} 色`, "success");
+  } catch (err) {
+    setStatus("上传失败：" + err.message, "error");
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  Swatch rendering & editing
+// ═══════════════════════════════════════════════════════
+function setCurrentPalette(palette) {
+  currentPalette = palette.map(c => [
+    Math.max(0, Math.min(255, Math.round(c[0]))),
+    Math.max(0, Math.min(255, Math.round(c[1]))),
+    Math.max(0, Math.min(255, Math.round(c[2]))),
+  ]);
+  renderSwatches();
+  $("applyPaletteBtn").disabled = !$("paletteEnabled").checked || !currentPixelArtB64;
+}
+
+function renderSwatches() {
+  const grid = $("swatchesGrid");
+  $("swatchCount").textContent = currentPalette.length + " 色";
+  if (currentPalette.length === 0) {
+    grid.innerHTML = `<span class="swatches-empty">色卡为空</span>`;
+    return;
+  }
+  grid.innerHTML = "";
+  currentPalette.forEach((color, idx) => {
+    const [r, g, b] = color;
+    const hex = rgbToHex(r, g, b);
+    const sw = document.createElement("div");
+    sw.className = "swatch";
+    sw.style.background = `#${hex}`;
+    sw.title = `#${hex}`;
+    const del = document.createElement("button");
+    del.className = "del-btn"; del.textContent = "×";
+    del.onclick = e => { e.stopPropagation(); deleteSwatch(idx); };
+    sw.appendChild(del);
+    sw.addEventListener("click", () => openColorEditor(idx, sw));
+    grid.appendChild(sw);
+  });
+}
+
+function deleteSwatch(idx) {
+  currentPalette.splice(idx, 1);
+  closeColorEditor();
+  renderSwatches();
+}
+
+$("addColorBtn").addEventListener("click", () => {
+  currentPalette.push([128, 128, 128]);
+  renderSwatches();
+  openColorEditor(currentPalette.length - 1, $("swatchesGrid").lastElementChild);
+});
+
+// ═══════════════════════════════════════════════════════
+//  Color editor popup
+// ═══════════════════════════════════════════════════════
+const popup = $("colorPopup");
+let popupSyncLock = false;
+
+function openColorEditor(idx, anchorEl) {
+  editingSwatchIdx = idx;
+  const [r, g, b] = currentPalette[idx];
+  const hex = rgbToHex(r, g, b);
+  $("popupColorPicker").value = "#" + hex;
+  $("popupR").value = r; $("popupG").value = g; $("popupB").value = b;
+  $("popupHex").value = hex;
+  const rect = anchorEl.getBoundingClientRect();
+  let top = rect.bottom + 6, left = rect.left;
+  if (left + 210 > window.innerWidth) left = window.innerWidth - 215;
+  if (top + 220 > window.innerHeight) top = rect.top - 226;
+  popup.style.top = top + "px"; popup.style.left = left + "px";
+  popup.style.display = "flex";
+}
+function closeColorEditor() { popup.style.display = "none"; editingSwatchIdx = null; }
+
+function syncFromRgb() {
+  if (popupSyncLock) return; popupSyncLock = true;
+  const r = Math.max(0, Math.min(255, parseInt($("popupR").value) || 0));
+  const g = Math.max(0, Math.min(255, parseInt($("popupG").value) || 0));
+  const b = Math.max(0, Math.min(255, parseInt($("popupB").value) || 0));
+  const hex = rgbToHex(r, g, b);
+  $("popupColorPicker").value = "#" + hex; $("popupHex").value = hex;
+  if (editingSwatchIdx !== null) { currentPalette[editingSwatchIdx] = [r, g, b]; renderSwatches(); }
+  popupSyncLock = false;
+}
+function syncFromHex() {
+  if (popupSyncLock) return;
+  const hex = $("popupHex").value.replace("#", "");
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return;
+  popupSyncLock = true;
+  const [r, g, b] = hexToRgb(hex);
+  $("popupR").value = r; $("popupG").value = g; $("popupB").value = b;
+  $("popupColorPicker").value = "#" + hex.toUpperCase();
+  if (editingSwatchIdx !== null) { currentPalette[editingSwatchIdx] = [r, g, b]; renderSwatches(); }
+  popupSyncLock = false;
+}
+function syncFromPicker() {
+  if (popupSyncLock) return;
+  const hex = $("popupColorPicker").value.replace("#", "");
+  popupSyncLock = true;
+  const [r, g, b] = hexToRgb(hex);
+  $("popupR").value = r; $("popupG").value = g; $("popupB").value = b;
+  $("popupHex").value = hex.toUpperCase();
+  if (editingSwatchIdx !== null) { currentPalette[editingSwatchIdx] = [r, g, b]; renderSwatches(); }
+  popupSyncLock = false;
+}
+
+$("popupColorPicker").addEventListener("input", syncFromPicker);
+$("popupR").addEventListener("input", syncFromRgb);
+$("popupG").addEventListener("input", syncFromRgb);
+$("popupB").addEventListener("input", syncFromRgb);
+$("popupHex").addEventListener("input", syncFromHex);
+$("popupDone").addEventListener("click", closeColorEditor);
+$("popupDelete").addEventListener("click", () => { if (editingSwatchIdx !== null) deleteSwatch(editingSwatchIdx); });
+
+document.addEventListener("click", e => {
+  if (!popup.contains(e.target) && !e.target.classList.contains("swatch")) closeColorEditor();
+});
+
+// ═══════════════════════════════════════════════════════
+//  Save / load palettes (localStorage)
+// ═══════════════════════════════════════════════════════
+const LS_KEY = "perfectpixel_palettes";
+function getSavedPalettes() { try { return JSON.parse(localStorage.getItem(LS_KEY) || "{}"); } catch { return {}; } }
+function setSavedPalettes(obj) { localStorage.setItem(LS_KEY, JSON.stringify(obj)); }
+
+function refreshSavedDropdown() {
+  const saved = getSavedPalettes();
+  const keys  = Object.keys(saved);
+  const opts  = $("savedPaletteOptions");
+  opts.innerHTML = "";
+
+  if (keys.length === 0) {
+    opts.innerHTML = '<div class="custom-option-empty">暂无已保存的色卡</div>';
+    return;
+  }
+
+  keys.forEach(name => {
+    const palette = saved[name];
+    const div = document.createElement("div");
+    div.className = "custom-option" + (name === selectedPaletteKey ? " selected" : "");
+    div.dataset.key = name;
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "option-name";
+    nameEl.textContent = `${name}  (${palette.length} 色)`;
+
+    const swatchesEl = document.createElement("div");
+    swatchesEl.className = "option-swatches";
+    palette.slice(0, 20).forEach(([r, g, b]) => {
+      const s = document.createElement("span");
+      s.style.background = `rgb(${r},${g},${b})`;
+      swatchesEl.appendChild(s);
+    });
+
+    div.appendChild(nameEl);
+    div.appendChild(swatchesEl);
+    div.addEventListener("click", () => {
+      selectedPaletteKey = name;
+      $("savedPaletteTriggerText").textContent = `${name}  (${palette.length} 色)`;
+      $("savedPalettesDropdown").classList.remove("open");
+      document.querySelectorAll(".custom-option").forEach(o =>
+        o.classList.toggle("selected", o.dataset.key === name)
+      );
+    });
+    opts.appendChild(div);
+  });
+}
+refreshSavedDropdown();
+
+// Toggle dropdown open/close
+$("savedPaletteTrigger").addEventListener("click", e => {
+  e.stopPropagation();
+  $("savedPalettesDropdown").classList.toggle("open");
+});
+// Close on outside click
+document.addEventListener("click", e => {
+  if (!$("savedPalettesDropdown").contains(e.target)) {
+    $("savedPalettesDropdown").classList.remove("open");
+  }
+});
+
+$("savePaletteBtn").addEventListener("click", () => {
+  const name = $("paletteName").value.trim();
+  if (!name) { setStatus("请输入色卡名称", "warning"); return; }
+  if (currentPalette.length === 0) { setStatus("当前色卡为空", "warning"); return; }
+  const saved = getSavedPalettes();
+  saved[name] = currentPalette;
+  setSavedPalettes(saved);
+  selectedPaletteKey = name;
+  $("savedPaletteTriggerText").textContent = `${name}  (${currentPalette.length} 色)`;
+  refreshSavedDropdown();
+  setStatus(`色卡「${name}」已保存`, "success");
+});
+
+$("loadPaletteBtn").addEventListener("click", () => {
+  if (!selectedPaletteKey) { setStatus("请先选择一个已保存的色卡", "warning"); return; }
+  const saved = getSavedPalettes();
+  if (!saved[selectedPaletteKey]) { setStatus("找不到该色卡", "error"); return; }
+  currentPaletteMeta = { name: selectedPaletteKey, source: "upload", algorithm: "", count: saved[selectedPaletteKey].length };
+  setCurrentPalette(saved[selectedPaletteKey]);
+  $("paletteName").value = selectedPaletteKey;
+  setStatus(`已加载色卡「${selectedPaletteKey}」：${saved[selectedPaletteKey].length} 色`, "success");
+});
+
+$("deletePaletteBtn").addEventListener("click", () => {
+  if (!selectedPaletteKey) { setStatus("请先选择一个色卡", "warning"); return; }
+  const saved = getSavedPalettes();
+  const name = selectedPaletteKey;
+  delete saved[name];
+  setSavedPalettes(saved);
+  selectedPaletteKey = "";
+  $("savedPaletteTriggerText").textContent = "— 选择已保存色卡 —";
+  refreshSavedDropdown();
+  setStatus(`已删除色卡「${name}」`, "success");
+});
+
+// ═══════════════════════════════════════════════════════
+//  Palette export
+// ═══════════════════════════════════════════════════════
+async function exportPalette(fmt) {
+  if (currentPalette.length === 0) { setStatus("色卡为空，无法导出", "warning"); return; }
+  const fd = new FormData();
+  fd.append("palette", JSON.stringify(currentPalette));
+  fd.append("format", fmt);
+  fd.append("name", $("paletteName").value.trim() || "Custom Palette");
+  try {
+    const res = await fetch("/api/export-palette", { method: "POST", body: fd });
+    if (!res.ok) { setStatus("导出失败", "error"); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = ($("paletteName").value.trim() || "palette") + "." + fmt;
+    a.click(); URL.revokeObjectURL(url);
+    setStatus(`已导出 .${fmt} 文件`, "success");
+  } catch (err) { setStatus("导出失败：" + err.message, "error"); }
+}
+$("exportAct").addEventListener("click", () => exportPalette("act"));
+$("exportGpl").addEventListener("click", () => exportPalette("gpl"));
+$("exportPal").addEventListener("click", () => exportPalette("pal"));
+
+// ═══════════════════════════════════════════════════════
+//  Apply palette
+// ═══════════════════════════════════════════════════════
+$("applyPaletteBtn").addEventListener("click", async () => {
+  if (!currentPixelArtB64 || currentPalette.length === 0) return;
+  setLoading(true); setStatus("正在应用色卡...");
+
+  const mode = document.querySelector("input[name=mappingMode]:checked").value;
+  const fd = new FormData();
+  fd.append("image", currentPixelArtB64);
+  fd.append("palette", JSON.stringify(currentPalette));
+  fd.append("mode", mode);
+  fd.append("scale", $("exportScale").value);
+
+  try {
+    const res = await fetch("/api/apply-palette", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) { setStatus("应用失败：" + (data.error || ""), "error"); return; }
+
+    const outSrc    = "data:image/png;base64," + data.output;
+    const scaledSrc = "data:image/png;base64," + data.output_scaled;
+
+    $("paletteResultBody").innerHTML = `<img src="${scaledSrc}" alt="palette result">`;
+    $("dlPaletteExact").href = outSrc;   $("dlPaletteExact").style.display = "block";
+    $("dlPaletteScaled").href = scaledSrc; $("dlPaletteScaled").style.display = "block";
+
+    // Build meta text
+    const modeNames = { vector: "向量匹配", swap: "色卡替换", perceptual: "感知匹配" };
+    let metaText = "";
+    if (currentPaletteMeta.source === "generate") {
+      metaText = `${currentPalette.length}色 · ${ALGO_NAMES[currentPaletteMeta.algorithm] || ""}（自动）`;
+    } else {
+      const n = currentPaletteMeta.name || "";
+      metaText = n ? `${n} · ${currentPalette.length}色（上传）` : `${currentPalette.length}色（上传）`;
+    }
+    $("paletteResultMeta").textContent = metaText;
+
+    renderPaletteStrip();
+    $("paletteResultCard").style.display = "flex";
+
+    setStatus(`色卡已应用（${modeNames[mode]}，${currentPalette.length} 色）`, "success");
+  } catch (err) {
+    setStatus("应用色卡失败：" + err.message, "error");
+  } finally {
+    setLoading(false);
+  }
+});
+
+function renderPaletteStrip() {
+  const strip = $("paletteStrip");
+  strip.innerHTML = "";
+  currentPalette.slice(0, 12).forEach(([r, g, b]) => {
+    const dot = document.createElement("div");
+    dot.className = "palette-strip-dot";
+    dot.style.background = `rgb(${r},${g},${b})`;
+    strip.appendChild(dot);
+  });
+}
+</script>
+</body>
+</html>
