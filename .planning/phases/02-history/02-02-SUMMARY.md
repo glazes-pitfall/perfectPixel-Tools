@@ -44,10 +44,10 @@ completed: 2026-03-02
 
 ## Performance
 
-- **Duration:** ~4 min
+- **Duration:** ~4 min (verification) + human review
 - **Started:** 2026-03-02T16:32:14Z
-- **Completed:** 2026-03-02T16:35:51Z
-- **Tasks:** 1/1 auto (Task 2 is human checkpoint — paused)
+- **Completed:** 2026-03-03
+- **Tasks:** 2/2 (Task 1: Playwright auto; Task 2: human checkpoint — APPROVED)
 - **Files modified:** 0 (verification only)
 
 ## Accomplishments
@@ -102,9 +102,35 @@ completed: 2026-03-02
 | Console errors on load | NONE | NONE | PASS |
 | Console errors during verification | NONE | NONE | PASS |
 
+## Human Verification Result
+
+**Task 2 (checkpoint:human-verify): APPROVED**
+
+User manually verified Undo/Redo interactive behavior in browser:
+- Undo/Redo buttons visible in top-bar, initially grayed out
+- Three canvas clicks produce three distinct random-color fills
+- Cmd+Z steps back through history correctly
+- Shift+Cmd+Z (redo) re-applies operations
+- Button disabled-state toggles correctly at history boundaries
+
+## Post-Verification Bug Fix
+
+After Task 1 automated verification passed, an off-by-one issue was identified and fixed before human review:
+
+**commit 23e9937 — fix(02-history): correct undo/redo off-by-one (save-after model)**
+
+The original implementation used a "save-before" mental model (snapshot captured before the action). The fix aligned the undo/redo gating logic with the actual "save-after" model where `history[0]` is the earliest drawable state and `canUndo` requires `historyIndex > 0`. This fix ensured the human-verify step tested the correct final behavior.
+
+**commit 7fee0d6 — docs(roadmap): add Phase 3 history convention note**
+
+Added a note to ROADMAP.md clarifying that Phase 3 drawing tools must call `pushHistory()` using the save-after convention (push after the action, not before).
+
 ## Task Commits
 
-No code changes — verification only plan. SUMMARY commit is the only artifact.
+No user-facing code changes in this plan — verification only. Post-verification bug fix committed separately:
+- `23e9937` — fix(02-history): correct undo/redo off-by-one (save-after model)
+- `7fee0d6` — docs(roadmap): add Phase 3 history convention note
+- `3469e05` — chore(02-02): playwright verification of Phase 2 history infrastructure
 
 ## Files Created/Modified
 
@@ -112,13 +138,21 @@ No code changes — verification only plan. SUMMARY commit is the only artifact.
 
 ## Decisions Made
 
-- No code changes needed: Phase 2 implementation passed all checks on first run
+- No user-facing code changes needed: Phase 2 implementation passed all verification checks
+- Post-verification fix (23e9937) clarified save-after model semantics for Phase 3 convention
 - Playwright accessed via `NODE_PATH=/Users/calling/.npm/_npx/e41f203b7505f1fb/node_modules` (v1.58.2 with chromium-1208)
 - Canvas clicks simulated via `PointerEvent` dispatch through `page.evaluate()`; undo/redo called directly via `page.evaluate(() => undo())`
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 1 - Bug] Corrected undo/redo off-by-one (save-after model)**
+- **Found during:** Post Task 1 automated verification
+- **Issue:** Gating logic mismatch between conceptual save-before and actual save-after implementation caused boundary conditions to be slightly off
+- **Fix:** Aligned `canUndo` / `canRedo` conditions with save-after model; `history[0]` is earliest drawable state; undo requires `historyIndex > 0`
+- **Files modified:** `editor.html`
+- **Commit:** 23e9937
 
 ## Issues Encountered
 
@@ -136,7 +170,10 @@ None.
 ## Self-Check
 
 - SUMMARY.md exists: PASSED (this file)
-- No code commits expected (verification-only plan): PASSED
+- Task 1 Playwright verification commit exists (3469e05): PASSED
+- Bug fix commit exists (23e9937): PASSED
+- Roadmap docs commit exists (7fee0d6): PASSED
+- Human verification approved: PASSED
 
 ## Self-Check: PASSED
 

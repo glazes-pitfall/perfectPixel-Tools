@@ -12,8 +12,8 @@ Ver 1.2 adds a full browser-based pixel art editor (`editor.html`) to the existi
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Editor page structure, pixel buffer, coordinate system, and zoom infrastructure
-- [ ] **Phase 2: History** - Snapshot-based undo/redo covering all editor operations
+- [x] **Phase 1: Foundation** - Editor page structure, pixel buffer, coordinate system, and zoom infrastructure
+- [x] **Phase 2: History** - Snapshot-based undo/redo covering all editor operations
 - [ ] **Phase 3: Core Tools** - Pencil, Eraser, Paint Bucket tools with integrated color picker
 - [ ] **Phase 4: Palette Panel** ⟋ **(parallel with Phase 5)** - Palette swatch integration with bidirectional color picker sync
 - [ ] **Phase 5: Selection Tools** ⟋ **(parallel with Phase 4)** - Rectangle Marquee and Magic Wand with animated marching ants
@@ -34,9 +34,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Flask 路由注册 + editor.html 4 面板布局骨架（CSS + HTML 结构）
-- [ ] 01-02-PLAN.md — 三层 Canvas 初始化、图片加载、缩放系统、像素检查器
-- [ ] 01-03-PLAN.md — 浏览器验证检查点（Phase 1 成功标准全部确认）
+- [x] 01-01-PLAN.md — Flask 路由注册 + editor.html 4 面板布局骨架（CSS + HTML 结构）
+- [x] 01-02-PLAN.md — 三层 Canvas 初始化、图片加载、缩放系统、像素检查器
+- [x] 01-03-PLAN.md — 浏览器验证检查点（Phase 1 成功标准全部确认）
 
 ### Phase 2: History
 **Goal**: Every drawing and editing action can be undone and redone without data loss
@@ -51,8 +51,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — pushHistory/undo/redo 实现、MAX_HISTORY=100、按钮状态管理、键盘快捷键、临时测试脚手架
-- [ ] 02-02-PLAN.md — Playwright 自动化验证 + 人工视觉验证检查点（Phase 2 成功标准全部确认）
+- [x] 02-01-PLAN.md — pushHistory/undo/redo 实现、MAX_HISTORY=100、按钮状态管理、键盘快捷键、临时测试脚手架
+- [x] 02-02-PLAN.md — Playwright 自动化验证 + 人工视觉验证检查点（Phase 2 成功标准全部确认）
 
 ### Phase 3: Core Tools
 **Goal**: User can draw, erase, and flood-fill pixels on the canvas, selecting colors with the permanent color picker
@@ -120,8 +120,8 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 2/3 | In Progress|  |
-| 2. History | 1/2 | In Progress|  |
+| 1. Foundation | 3/3 | Complete | 2026-03-02 |
+| 2. History | 2/2 | Complete | 2026-03-03 |
 | 3. Core Tools | 0/TBD | Not started | - |
 | 4. Palette Panel | 0/TBD | Not started | - |
 | 5. Selection Tools | 0/TBD | Not started | - |

@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T16:31:03.665Z"
+last_updated: "2026-03-03T00:00:00.000Z"
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 1 of 7 (Foundation) — COMPLETE ✅
-Plan: 3/3 complete
-Status: Phase 1 done — ready for Phase 2
-Last activity: 2026-03-02 - Completed quick task 2: fix-zoom-center-pan-bounds-sensitivity
+Phase: 2 of 7 (History) — COMPLETE ✅
+Plan: 2/2 complete
+Status: Phase 2 done — ready for Phase 3 (Core Tools: Pencil/Eraser/Bucket)
+Last activity: 2026-03-03 - Completed 02-02: human verification of Phase 2 history infrastructure (APPROVED)
 
-Progress: [████░░░░░░] 14%
+Progress: [████████░░] 29%
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Progress: [████░░░░░░] 14%
 *Updated after each plan completion*
 | Phase 01-foundation P02 | 1 | 2 tasks | 1 files |
 | Phase 02-history P01 | 2 | 1 tasks | 1 files |
+| Phase 02-history P02 | 4 | 2 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,7 @@ Recent decisions affecting current work:
 - [Post-01 quick fix]: Zoom/pan uses PAD=2000 scroll-space (#zoom-scroll-content, not flexbox centering); centerCanvas() MUST apply transform:scale(zoom) or canvas renders at 1x visually despite EditorState.zoom=4; applyZoom pivot math: (px-PAD)*(newZoom/oldZoom)+PAD-pxInArea
 - [Post-01 quick fix]: Button/kbd zoom snaps to power-of-2 levels (SNAP_LEVELS); trackpad pinch stays continuous float; factor 1.05 per trackpad tick
 - [Phase 02-history]: MAX_HISTORY=100 (CONTEXT.md decision); canUndo condition historyIndex>0; overflow via history.shift(); TEMP SCAFFOLD in cursorCanvas pointerdown flagged for Phase 3 removal
+- [Phase 02-history P02]: save-after model clarified — pushHistory() called after action; Phase 3 tools must follow this convention; fix (23e9937) corrected off-by-one in gating
 
 ### Pending Todos
 
@@ -91,7 +93,7 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-02
-Stopped at: Completed quick task 2: fix-zoom-center-pan-bounds-sensitivity
-Next: Phase 2 — History/Undo-Redo infrastructure
+Last session: 2026-03-03
+Stopped at: Completed 02-02-PLAN.md — Phase 2 (History) fully verified and complete
+Next: Phase 3 — Core Tools (Pencil/Eraser/Bucket); remove TEMP SCAFFOLD first
 Resume file: None
