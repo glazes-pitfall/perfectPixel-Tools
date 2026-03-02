@@ -37,23 +37,26 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal**: Every drawing and editing action can be undone and redone without data loss
 **Depends on**: Phase 1
 **Requirements**: HIST-01, HIST-02
+**Implementation note**: Phase 2 delivers only the undo/redo infrastructure (`pushHistory()` / `undo()` / `redo()`). Since no real tools exist yet, a temporary test scaffold — a canvas click listener that calls `pushHistory()` + `setPixel()` — is added solely to make the success criteria verifiable. This scaffold is removed at the start of Phase 3.
 **Success Criteria** (what must be TRUE):
-  1. After making three distinct edits (e.g., three pencil strokes), pressing Cmd+Z three times restores the canvas to its exact pre-edit state
+  1. Clicking on the canvas three times (via the temporary scaffold) produces three distinct pixel changes; pressing Cmd+Z three times restores the canvas to its exact pre-edit state
   2. After undoing, pressing Shift+Cmd+Z re-applies the actions in order
   3. Undo and redo buttons are visible and active in the top bar at all times
-  4. A single long pencil stroke counts as one undo step, not one step per pixel
+  4. Each canvas click counts as exactly one undo step (confirmed by verifying the history stack length equals the number of clicks)
 **Plans**: TBD
 
 ### Phase 3: Core Tools
 **Goal**: User can draw, erase, and flood-fill pixels on the canvas, selecting colors with the permanent color picker
 **Depends on**: Phase 2
 **Requirements**: DRAW-01, DRAW-02, DRAW-03, DRAW-04, DRAW-05, DRAW-06, CLR-01, CLR-02, CLR-03, CLR-04
+**Implementation note**: First task of this phase is to remove the Phase 2 temporary test scaffold (the canvas click listener used for history verification).
 **Success Criteria** (what must be TRUE):
-  1. User can draw on the canvas with Pencil (B) using round or square brush shapes at any integer diameter from 1px up, and each stroke is one undo step
-  2. User can erase pixels to transparency with Eraser (E) using the same brush options as Pencil
-  3. User can flood-fill a bounded region with Paint Bucket (G) using adjustable tolerance and contiguous/non-contiguous mode
-  4. The permanent color picker (bottom-left) lets the user set the active drawing color via HSL wheel, eyedropper click on the canvas, hex input, or RGB inputs — all four update the same active color
-  5. Enabling Pixel-perfect mode on the Pencil visually removes the extra corner pixel that appears on diagonal strokes
+  1. The Phase 2 test scaffold (temporary click listener) has been removed from the codebase
+  2. User can draw on the canvas with Pencil (B) using round or square brush shapes at any integer diameter from 1px up, and each stroke is one undo step
+  3. User can erase pixels to transparency with Eraser (E) using the same brush options as Pencil
+  4. User can flood-fill a bounded region with Paint Bucket (G) using adjustable tolerance and contiguous/non-contiguous mode
+  5. The permanent color picker (bottom-left) lets the user set the active drawing color via HSL wheel, eyedropper click on the canvas, hex input, or RGB inputs — all four update the same active color
+  6. Enabling Pixel-perfect mode on the Pencil visually removes the extra corner pixel that appears on diagonal strokes
 **Plans**: TBD
 
 ### Phase 4: Palette Panel
