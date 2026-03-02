@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T19:05:21Z"
+last_updated: "2026-03-02T19:13:28.505Z"
 progress:
-  total_phases: 7
+  total_phases: 3
   completed_phases: 2
-  total_plans: 13
-  completed_plans: 6
+  total_plans: 9
+  completed_plans: 7
 ---
 
 # Project State
@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 3 of 7 (Core Tools) — IN PROGRESS
-Plan: 1/4 complete
-Status: Phase 3 Plan 01 done — Pencil/Eraser/tool dispatch complete; ready for 03-02 (Paint Bucket)
-Last activity: 2026-03-03 - Completed 03-01: tool dispatch + pencil + eraser + cursor preview
+Plan: 2/4 complete
+Status: Phase 3 Plan 02 done — Paint Bucket (BFS floodFill) + top-bar tool settings UI complete; ready for 03-03 (Eyedropper)
+Last activity: 2026-03-03 - Completed 03-02: floodFill BFS, tools.bucket, tool settings panels
 
 Progress: [█████████░] 43%
 
@@ -51,6 +51,7 @@ Progress: [█████████░] 43%
 | Phase 02-history P01 | 2 | 1 tasks | 1 files |
 | Phase 02-history P02 | 4 | 2 tasks | 0 files |
 | Phase 03-core-tools P01 | 4 | 2 tasks | 1 files |
+| Phase 03-core-tools P02 | 4 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,9 @@ Recent decisions affecting current work:
 - [03-01]: setPixel() was missing from Phase 2 implementation (documented in CLAUDE.md but never coded) — added as auto-fix; now fundamental write primitive for all tools
 - [03-01]: Tool dispatch uses tools{} object pattern; each tool implements onDown/onMove/onUp/onCursor; tools reassign stub entries inside DOMContentLoaded to avoid hoisting issues with let-scoped stamp vars
 - [03-01]: Pixel-perfect uses _ppHistory sliding window (last 2 placed pixels); skip L-corner pixel when current shares axis with p1 AND p2 shares different axis
+- [Phase 03-core-tools]: Save-before model for bucket: pushHistory() called before floodFill() — safe for instant-apply tools
+- [Phase 03-core-tools]: [03-02]: Pencil and Eraser use separate size inputs so each tool remembers its size independently
+- [Phase 03-core-tools]: [03-02]: floodFill BFS uses visited-before-push Uint8Array bitmap pattern; non-contiguous mode uses simple double loop
 
 ### Pending Todos
 
@@ -98,6 +102,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 03-01-PLAN.md — Pencil, Eraser, tool dispatch, cursor preview complete
-Next: Phase 3 Plan 02 — Paint Bucket (G) with BFS flood fill
+Stopped at: Completed 03-02-PLAN.md — Paint Bucket + Tool Settings UI complete
+Next: Phase 3 Plan 03 — Eyedropper tool
 Resume file: None

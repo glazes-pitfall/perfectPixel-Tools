@@ -45,8 +45,8 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 - [x] **DRAW-01**: Pencil Tool（快捷键 B）：支持圆形（Pixel Circle）/ 方形笔头
 - [x] **DRAW-02**: Pencil Tool（快捷键 B）：支持画笔直径（从 1px 起的整数）
 - [x] **DRAW-03**: Pencil Tool（快捷键 B）：支持 Pixel-perfect 模式勾选框
-- [ ] **DRAW-04**: Paint Bucket Tool（快捷键 G）：支持 Tolerance 容差参数（数值输入）
-- [ ] **DRAW-05**: Paint Bucket Tool（快捷键 G）：支持 Contiguous 勾选框（是否只选毗邻像素）
+- [x] **DRAW-04**: Paint Bucket Tool（快捷键 G）：支持 Tolerance 容差参数（数值输入）
+- [x] **DRAW-05**: Paint Bucket Tool（快捷键 G）：支持 Contiguous 勾选框（是否只选毗邻像素）
 - [x] **DRAW-06**: Eraser Tool（快捷键 E）：与 Pencil 共用形状/直径/Pixel-perfect 逻辑，绘制透明像素
 
 ### SEL — 选区工具
@@ -118,8 +118,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DRAW-01 | Phase 3 | Complete |
 | DRAW-02 | Phase 3 | Complete |
 | DRAW-03 | Phase 3 | Complete |
-| DRAW-04 | Phase 3 | Pending |
-| DRAW-05 | Phase 3 | Pending |
+| DRAW-04 | Phase 3 | Complete |
+| DRAW-05 | Phase 3 | Complete |
 | DRAW-06 | Phase 3 | Complete |
 | SEL-01 | Phase 5 | Pending |
 | SEL-02 | Phase 5 | Pending |
