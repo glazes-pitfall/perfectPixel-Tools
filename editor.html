@@ -204,9 +204,9 @@
     <button class="btn btn-ghost" id="btn-zoom-out" title="Zoom out (Ctrl+-)">−</button>
     <span id="zoom-display" style="font-size:13px; min-width:36px; text-align:center; font-variant-numeric:tabular-nums;">4x</span>
     <button class="btn btn-ghost" id="btn-zoom-in"  title="Zoom in (Ctrl+=)">+</button>
-    <!-- Disabled placeholders -->
-    <button class="btn btn-ghost" disabled title="Undo (Cmd+Z)">↩ Undo</button>
-    <button class="btn btn-ghost" disabled title="Redo (Shift+Cmd+Z)">↪ Redo</button>
+    <!-- Undo/Redo (managed by updateHistoryButtons()) -->
+    <button class="btn btn-ghost" id="btn-undo" disabled title="Undo (Cmd+Z)">↩ Undo</button>
+    <button class="btn btn-ghost" id="btn-redo" disabled title="Redo (Shift+Cmd+Z)">↪ Redo</button>
   </header>
 
   <!-- ── Main Layout ─────────────────────────────────────────────────────── -->
@@ -285,7 +285,7 @@
       transformState: null,
       history: [],                // Uint8ClampedArray snapshots
       historyIndex: -1,
-      MAX_HISTORY: 50,
+      MAX_HISTORY: 100,
       palette: [],                // [[r,g,b], ...] — same format as web_ui.html
 
       // Minimal pub/sub (no library needed)
@@ -306,6 +306,63 @@
     let pixelCtx = null;
     let selCtx = null;
     let cursorCtx = null;
+
+    // ── History (undo/redo) ───────────────────────────────────────────────────
+
+    let btnUndo = null;
+    let btnRedo = null;
+
+    function initHistoryButtons() {
+      btnUndo = document.getElementById('btn-undo');
+      btnRedo = document.getElementById('btn-redo');
+      btnUndo.addEventListener('click', undo);
+      btnRedo.addEventListener('click', redo);
+      updateHistoryButtons();
+    }
+
+    function updateHistoryButtons() {
+      if (!btnUndo || !btnRedo) return;
+      // canUndo: historyIndex > 0 (index 0 is earliest snapshot; must have a prior state)
+      btnUndo.disabled = EditorState.historyIndex <= 0;
+      // canRedo: historyIndex < history.length - 1
+      btnRedo.disabled = EditorState.historyIndex >= EditorState.history.length - 1;
+    }
+
+    /**
+     * Save a snapshot of EditorState.pixels to the history stack.
+     * Must be called in pointerdown only — never in pointermove.
+     * One user action = one history entry.
+     */
+    function pushHistory() {
+      // Truncate any redo branch
+      EditorState.history.splice(EditorState.historyIndex + 1);
+      // Push current pixels snapshot
+      EditorState.history.push(EditorState.pixels.slice());
+      // Overflow: keep stack at MAX_HISTORY
+      if (EditorState.history.length > EditorState.MAX_HISTORY) {
+        EditorState.history.shift();
+        // historyIndex stays at MAX_HISTORY - 1 (pointing to last entry)
+      } else {
+        EditorState.historyIndex++;
+      }
+      updateHistoryButtons();
+    }
+
+    function undo() {
+      if (EditorState.historyIndex <= 0) return;
+      EditorState.historyIndex--;
+      EditorState.pixels = EditorState.history[EditorState.historyIndex].slice();
+      flushPixels();
+      updateHistoryButtons();
+    }
+
+    function redo() {
+      if (EditorState.historyIndex >= EditorState.history.length - 1) return;
+      EditorState.historyIndex++;
+      EditorState.pixels = EditorState.history[EditorState.historyIndex].slice();
+      flushPixels();
+      updateHistoryButtons();
+    }
 
     // ── Canvas Initialization ─────────────────────────────────────────────────
 
@@ -542,6 +599,29 @@
         });
       });
 
+      // Initialize history button references and event listeners
+      initHistoryButtons();
+
+      // ── TEMP SCAFFOLD (Phase 2 only — REMOVE at start of Phase 3) ──────────
+      // Fills entire canvas with a random solid color on each click.
+      // Provides dramatic visual confirmation of undo/redo stack traversal.
+      cursorCanvas.addEventListener('pointerdown', function _scaffoldClick(e) {
+        e.preventDefault();
+        if (!EditorState.pixels) return;
+        pushHistory();
+        const r = Math.floor(Math.random() * 256);
+        const g = Math.floor(Math.random() * 256);
+        const b = Math.floor(Math.random() * 256);
+        for (let i = 0; i < EditorState.pixels.length; i += 4) {
+          EditorState.pixels[i]   = r;
+          EditorState.pixels[i+1] = g;
+          EditorState.pixels[i+2] = b;
+          EditorState.pixels[i+3] = 255;
+        }
+        flushPixels();
+      });
+      // ── END TEMP SCAFFOLD ────────────────────────────────────────────────────
+
       // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
       const canvasArea = document.getElementById('canvas-area');
 
@@ -589,6 +669,16 @@
           e.preventDefault();
           const rect = canvasArea.getBoundingClientRect();
           applyZoom(snapZoomOut(EditorState.zoom), rect.left + rect.width / 2, rect.top + rect.height / 2);
+        }
+        // Undo: Cmd+Z (Mac) or Ctrl+Z
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
+          e.preventDefault();
+          undo();
+        }
+        // Redo: Shift+Cmd+Z (Mac) or Ctrl+Shift+Z
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') {
+          e.preventDefault();
+          redo();
         }
       });
     });
