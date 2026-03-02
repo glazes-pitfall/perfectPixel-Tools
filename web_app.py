@@ -348,6 +348,16 @@ def index():
     return send_file(os.path.join(os.path.dirname(__file__), "web_ui.html"))
 
 
+@app.route("/editor")
+def editor():
+    return send_file(os.path.join(os.path.dirname(__file__), "editor.html"))
+
+
+@app.route("/output.png")
+def output_png():
+    return send_file(os.path.join(os.path.dirname(__file__), "output.png"))
+
+
 @app.route("/api/process", methods=["POST"])
 def process():
     if "image" not in request.files:
