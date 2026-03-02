@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T17:36:20.834Z"
+last_updated: "2026-03-03T19:05:21Z"
 progress:
-  total_phases: 2
+  total_phases: 7
   completed_phases: 2
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 13
+  completed_plans: 6
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 2 of 7 (History) — COMPLETE ✅
-Plan: 2/2 complete
-Status: Phase 2 done — ready for Phase 3 (Core Tools: Pencil/Eraser/Bucket)
-Last activity: 2026-03-03 - Completed 02-02: human verification of Phase 2 history infrastructure (APPROVED)
+Phase: 3 of 7 (Core Tools) — IN PROGRESS
+Plan: 1/4 complete
+Status: Phase 3 Plan 01 done — Pencil/Eraser/tool dispatch complete; ready for 03-02 (Paint Bucket)
+Last activity: 2026-03-03 - Completed 03-01: tool dispatch + pencil + eraser + cursor preview
 
-Progress: [████████░░] 29%
+Progress: [█████████░] 43%
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Progress: [████████░░] 29%
 | Phase 01-foundation P02 | 1 | 2 tasks | 1 files |
 | Phase 02-history P01 | 2 | 1 tasks | 1 files |
 | Phase 02-history P02 | 4 | 2 tasks | 0 files |
+| Phase 03-core-tools P01 | 4 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,9 @@ Recent decisions affecting current work:
 - [Post-01 quick fix]: Button/kbd zoom snaps to power-of-2 levels (SNAP_LEVELS); trackpad pinch stays continuous float; factor 1.05 per trackpad tick
 - [Phase 02-history]: MAX_HISTORY=100 (CONTEXT.md decision); canUndo condition historyIndex>0; overflow via history.shift(); TEMP SCAFFOLD in cursorCanvas pointerdown flagged for Phase 3 removal
 - [Phase 02-history P02]: save-after model clarified — pushHistory() called after action; Phase 3 tools must follow this convention; fix (23e9937) corrected off-by-one in gating
+- [03-01]: setPixel() was missing from Phase 2 implementation (documented in CLAUDE.md but never coded) — added as auto-fix; now fundamental write primitive for all tools
+- [03-01]: Tool dispatch uses tools{} object pattern; each tool implements onDown/onMove/onUp/onCursor; tools reassign stub entries inside DOMContentLoaded to avoid hoisting issues with let-scoped stamp vars
+- [03-01]: Pixel-perfect uses _ppHistory sliding window (last 2 placed pixels); skip L-corner pixel when current shares axis with p1 AND p2 shares different axis
 
 ### Pending Todos
 
@@ -94,6 +98,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 02-02-PLAN.md — Phase 2 (History) fully verified and complete
-Next: Phase 3 — Core Tools (Pencil/Eraser/Bucket); remove TEMP SCAFFOLD first
+Stopped at: Completed 03-01-PLAN.md — Pencil, Eraser, tool dispatch, cursor preview complete
+Next: Phase 3 Plan 02 — Paint Bucket (G) with BFS flood fill
 Resume file: None
