@@ -274,6 +274,50 @@
         </div>
       </div>
 
+      <!-- Color Picker Panel (permanent, between scroll area and pixel inspector) -->
+      <div id="color-picker-panel" style="flex-shrink:0; border-top:1px solid var(--border); padding:12px; background:var(--surface);">
+        <!-- HSL Wheel Canvas -->
+        <canvas id="picker-canvas" width="160" height="160"
+          style="display:block; margin:0 auto 8px; cursor:crosshair; image-rendering:pixelated;"></canvas>
+
+        <!-- Hex input row -->
+        <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+          <label style="font-size:11px; color:var(--text-muted); min-width:24px;">Hex</label>
+          <input id="clr-hex" type="text" maxlength="7" value="#000000"
+            style="flex:1; padding:4px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px; font-family:monospace;">
+          <button id="clr-copy" class="btn btn-ghost" title="Copy hex to clipboard" style="padding:3px 7px; font-size:11px;">&#128203;</button>
+        </div>
+
+        <!-- RGB inputs row -->
+        <div style="display:flex; gap:4px; margin-bottom:8px;">
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;">
+            <label style="font-size:10px; color:var(--text-muted);">R</label>
+            <input id="clr-r" type="number" min="0" max="255" value="0"
+              style="width:100%; padding:3px 4px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px; text-align:center;">
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;">
+            <label style="font-size:10px; color:var(--text-muted);">G</label>
+            <input id="clr-g" type="number" min="0" max="255" value="0"
+              style="width:100%; padding:3px 4px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px; text-align:center;">
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;">
+            <label style="font-size:10px; color:var(--text-muted);">B</label>
+            <input id="clr-b" type="number" min="0" max="255" value="0"
+              style="width:100%; padding:3px 4px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px; text-align:center;">
+          </div>
+        </div>
+
+        <!-- Eyedropper + foreground swatch row -->
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button id="btn-eyedropper" class="btn btn-ghost" title="Eyedropper: pick color from canvas"
+            style="padding:4px 8px; font-size:13px;">&#128449;</button>
+          <div id="eyedropper-hover-swatch" style="display:none; width:16px; height:16px; border:1px solid var(--border); border-radius:2px; flex-shrink:0;"></div>
+          <span id="eyedropper-transparent-label" style="display:none; font-size:10px; color:var(--text-muted);">transparent</span>
+          <div style="flex:1;"></div>
+          <div id="clr-swatch" style="width:28px; height:28px; border:1px solid var(--border); border-radius:4px; background:#000; flex-shrink:0;" title="Current foreground color"></div>
+        </div>
+      </div>
+
       <!-- Pixel Inspector (permanent bottom of left panel) -->
       <div id="pixel-inspector">
         <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">像素检查器</div>
@@ -314,6 +358,129 @@
   </div><!-- /#layout -->
 
   <script>
+    // ── Color Utilities (HSL <-> RGB, no external library) ────────────────────
+    function hslToRgb(h, s, l) {
+      s /= 100; l /= 100;
+      const k = n => (n + h / 30) % 12;
+      const a = s * Math.min(l, 1 - l);
+      const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+      return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
+    }
+
+    function rgbToHsl(r, g, b) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      const l = (max + min) / 2;
+      if (max === min) return [0, 0, Math.round(l * 100)];
+      const d = max - min;
+      const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      let h;
+      if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+      else if (max === g) h = ((b - r) / d + 2) / 6;
+      else h = ((r - g) / d + 4) / 6;
+      return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+    }
+
+    // ── Color Picker State ────────────────────────────────────────────────────
+    let pickerCanvas = null, pickerCtx = null;
+    let currentHue = 0, currentSat = 0, currentLit = 0;
+    const PICKER_CX = 80, PICKER_CY = 80;
+    const RING_OUTER = 75, RING_INNER = 55;
+    const SQ_X = 35, SQ_Y = 35, SQ_W = 90, SQ_H = 90;
+    let _pickerDragZone = null;  // 'ring' | 'square' | null
+
+    function drawHueRing(ctx) {
+      const grad = ctx.createConicGradient(-Math.PI / 2, PICKER_CX, PICKER_CY);
+      const stops = [
+        [0, '#ff0000'], [1/6, '#ffff00'], [2/6, '#00ff00'],
+        [3/6, '#00ffff'], [4/6, '#0000ff'], [5/6, '#ff00ff'], [1, '#ff0000']
+      ];
+      stops.forEach(([pos, color]) => grad.addColorStop(pos, color));
+      ctx.beginPath();
+      ctx.arc(PICKER_CX, PICKER_CY, RING_OUTER, 0, 2 * Math.PI);
+      ctx.arc(PICKER_CX, PICKER_CY, RING_INNER, 0, 2 * Math.PI, true);
+      ctx.fillStyle = grad;
+      ctx.fill('evenodd');
+    }
+
+    function drawSLSquare(ctx) {
+      // Pass 1: saturation gradient (gray left -> pure hue right)
+      const satGrad = ctx.createLinearGradient(SQ_X, SQ_Y, SQ_X + SQ_W, SQ_Y);
+      satGrad.addColorStop(0, 'hsl(' + currentHue + ', 0%, 50%)');
+      satGrad.addColorStop(1, 'hsl(' + currentHue + ', 100%, 50%)');
+      ctx.fillStyle = satGrad;
+      ctx.fillRect(SQ_X, SQ_Y, SQ_W, SQ_H);
+      // Pass 2: lightness overlay (white top -> transparent -> black bottom)
+      const litGrad = ctx.createLinearGradient(SQ_X, SQ_Y, SQ_X, SQ_Y + SQ_H);
+      litGrad.addColorStop(0, 'rgba(255,255,255,1)');
+      litGrad.addColorStop(0.5, 'rgba(255,255,255,0)');
+      litGrad.addColorStop(0.5, 'rgba(0,0,0,0)');
+      litGrad.addColorStop(1, 'rgba(0,0,0,1)');
+      ctx.fillStyle = litGrad;
+      ctx.fillRect(SQ_X, SQ_Y, SQ_W, SQ_H);
+    }
+
+    function drawPickerIndicators(ctx) {
+      // Ring indicator: small circle on hue ring at currentHue angle
+      const ringR = (RING_OUTER + RING_INNER) / 2;
+      const hueRad = (currentHue - 90) * Math.PI / 180;
+      const rx = PICKER_CX + ringR * Math.cos(hueRad);
+      const ry = PICKER_CY + ringR * Math.sin(hueRad);
+      ctx.beginPath();
+      ctx.arc(rx, ry, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // SL square indicator: circle at current S/L position
+      const sx = SQ_X + (currentSat / 100) * SQ_W;
+      // Lightness: 100% at top (y=SQ_Y), 0% at bottom (y=SQ_Y+SQ_H)
+      const sy = SQ_Y + (1 - currentLit / 100) * SQ_H;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    function redrawPicker() {
+      if (!pickerCtx) return;
+      pickerCtx.clearRect(0, 0, 160, 160);
+      drawHueRing(pickerCtx);
+      drawSLSquare(pickerCtx);
+      drawPickerIndicators(pickerCtx);
+    }
+
+    // ── syncColorUI — single sync path, _syncLock prevents infinite loop ──────
+    let _syncLock = false;
+    function syncColorUI() {
+      if (_syncLock) return;
+      _syncLock = true;
+      const [r, g, b] = EditorState.foregroundColor;
+      // Update hex input
+      const hex = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+      const hexEl = document.getElementById('clr-hex');
+      if (hexEl) hexEl.value = hex;
+      // Update RGB inputs
+      const rEl = document.getElementById('clr-r');
+      const gEl = document.getElementById('clr-g');
+      const bEl = document.getElementById('clr-b');
+      if (rEl) rEl.value = r;
+      if (gEl) gEl.value = g;
+      if (bEl) bEl.value = b;
+      // Update foreground swatch
+      const swatch = document.getElementById('clr-swatch');
+      if (swatch) swatch.style.background = 'rgb(' + r + ',' + g + ',' + b + ')';
+      // Update HSL state and redraw picker
+      [currentHue, currentSat, currentLit] = rgbToHsl(r, g, b);
+      redrawPicker();
+      _syncLock = false;
+    }
+
     // ── EditorState — Single Source of Truth ─────────────────────────────────
     // Source: CLAUDE.md "EditorState" section / RESEARCH.md Pattern 4
     const EditorState = {
@@ -848,6 +1015,103 @@
         btn.addEventListener('click', () => setActiveTool(btn.dataset.tool));
       });
       setActiveTool('pencil');
+
+      // ── Color Picker Panel init ───────────────────────────────────────────────
+
+      pickerCanvas = document.getElementById('picker-canvas');
+      pickerCtx = pickerCanvas.getContext('2d');
+      [currentHue, currentSat, currentLit] = rgbToHsl(...EditorState.foregroundColor.slice(0, 3));
+      redrawPicker();
+
+      // handlePickerDrag: update color from drag position on ring or square
+      function handlePickerDrag(px, py) {
+        if (_pickerDragZone === 'ring') {
+          const dx = px - PICKER_CX, dy = py - PICKER_CY;
+          // Hue: atan2, offset +90 so top = 0°, normalized to 0–360
+          currentHue = ((Math.atan2(dy, dx) * 180 / Math.PI) + 90 + 360) % 360;
+          EditorState.foregroundColor = [...hslToRgb(currentHue, currentSat, currentLit), 255];
+          syncColorUI();
+        } else if (_pickerDragZone === 'square') {
+          currentSat = Math.max(0, Math.min(100, ((px - SQ_X) / SQ_W) * 100));
+          currentLit = Math.max(0, Math.min(100, (1 - (py - SQ_Y) / SQ_H) * 100));
+          EditorState.foregroundColor = [...hslToRgb(currentHue, currentSat, currentLit), 255];
+          syncColorUI();
+        }
+      }
+
+      // Picker canvas pointer events (hue ring vs SL square)
+      pickerCanvas.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        pickerCanvas.setPointerCapture(e.pointerId);
+        const rect = pickerCanvas.getBoundingClientRect();
+        const px = e.clientX - rect.left, py = e.clientY - rect.top;
+        const dx = px - PICKER_CX, dy = py - PICKER_CY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist >= RING_INNER && dist <= RING_OUTER) {
+          _pickerDragZone = 'ring';
+        } else if (px >= SQ_X && px <= SQ_X + SQ_W && py >= SQ_Y && py <= SQ_Y + SQ_H) {
+          _pickerDragZone = 'square';
+        } else {
+          _pickerDragZone = null;
+        }
+        handlePickerDrag(px, py);
+      });
+      pickerCanvas.addEventListener('pointermove', e => {
+        if (!_pickerDragZone) return;
+        const rect = pickerCanvas.getBoundingClientRect();
+        handlePickerDrag(e.clientX - rect.left, e.clientY - rect.top);
+      });
+      pickerCanvas.addEventListener('pointerup', () => { _pickerDragZone = null; });
+      pickerCanvas.addEventListener('pointercancel', () => { _pickerDragZone = null; });
+
+      // Hex input: apply on Enter or blur
+      const hexEl = document.getElementById('clr-hex');
+      function applyHexInput() {
+        let v = hexEl.value.trim().replace(/^#/, '');
+        if (!/^[0-9a-fA-F]{6}$/.test(v)) {
+          syncColorUI();  // restore last valid value
+          return;
+        }
+        const r = parseInt(v.slice(0, 2), 16);
+        const g = parseInt(v.slice(2, 4), 16);
+        const b = parseInt(v.slice(4, 6), 16);
+        EditorState.foregroundColor = [r, g, b, 255];
+        syncColorUI();
+      }
+      hexEl.addEventListener('keydown', e => { if (e.key === 'Enter') applyHexInput(); });
+      hexEl.addEventListener('blur', applyHexInput);
+
+      // Copy hex button
+      document.getElementById('clr-copy').addEventListener('click', () => {
+        const hex = document.getElementById('clr-hex').value;
+        navigator.clipboard.writeText(hex).catch(() => {
+          // Fallback: deprecated execCommand
+          const ta = document.createElement('textarea');
+          ta.value = hex;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        });
+      });
+
+      // RGB number inputs: immediate update on input
+      function applyRgbInput() {
+        const r = Math.max(0, Math.min(255, parseInt(document.getElementById('clr-r').value) || 0));
+        const g = Math.max(0, Math.min(255, parseInt(document.getElementById('clr-g').value) || 0));
+        const b = Math.max(0, Math.min(255, parseInt(document.getElementById('clr-b').value) || 0));
+        EditorState.foregroundColor = [r, g, b, 255];
+        syncColorUI();
+      }
+      ['clr-r', 'clr-g', 'clr-b'].forEach(id => {
+        document.getElementById(id).addEventListener('input', applyRgbInput);
+      });
+
+      // Eyedropper button: save prevTool, activate eyedropper
+      document.getElementById('btn-eyedropper').addEventListener('click', () => {
+        EditorState._prevTool = EditorState.activeTool;
+        setActiveTool('eyedropper');
+      });
 
       // ── Tool settings UI bindings ─────────────────────────────────────────────
 
