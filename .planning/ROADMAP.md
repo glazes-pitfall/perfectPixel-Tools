@@ -31,7 +31,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User can zoom in and out on the canvas; pixel coordinates reported by the editor remain 1:1 with image coordinates at every zoom level
   3. The 4-panel layout (left bar, central canvas, right toolbox, top bar) is visible and structurally complete, matching the Ver 1.1 dark theme
   4. Clicking any pixel on the canvas returns the exact RGBA value from `EditorState.pixels` (not from the canvas element), confirming premultiplied-alpha isolation is in place
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Flask 路由注册 + editor.html 4 面板布局骨架（CSS + HTML 结构）
+- [ ] 01-02-PLAN.md — 三层 Canvas 初始化、图片加载、缩放系统、像素检查器
+- [ ] 01-03-PLAN.md — 浏览器验证检查点（Phase 1 成功标准全部确认）
 
 ### Phase 2: History
 **Goal**: Every drawing and editing action can be undone and redone without data loss
@@ -111,7 +116,7 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/TBD | Not started | - |
+| 1. Foundation | 0/3 | Not started | - |
 | 2. History | 0/TBD | Not started | - |
 | 3. Core Tools | 0/TBD | Not started | - |
 | 4. Palette Panel | 0/TBD | Not started | - |
