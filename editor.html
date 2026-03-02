@@ -529,6 +529,13 @@
       });
       const activePanel = document.getElementById('tool-settings-' + name);
       if (activePanel) activePanel.style.display = 'flex';
+      // Clear eyedropper UI state when switching away from eyedropper
+      if (name !== 'eyedropper') {
+        const hoverSwatch = document.getElementById('eyedropper-hover-swatch');
+        const transparentLabel = document.getElementById('eyedropper-transparent-label');
+        if (hoverSwatch) hoverSwatch.style.display = 'none';
+        if (transparentLabel) transparentLabel.style.display = 'none';
+      }
     }
 
     // ── Canvas context refs (set by initCanvases, used by all tools) ─────────
@@ -985,7 +992,7 @@
         pencil:     { onDown(x,y,e){}, onMove(x,y,e){}, onUp(x,y,e){}, onCursor(x,y){} },
         eraser:     { onDown(x,y,e){}, onMove(x,y,e){}, onUp(x,y,e){}, onCursor(x,y){} },
         bucket:     { onDown(x,y,e){}, onMove(x,y,e){}, onUp(x,y,e){}, onCursor(x,y){} },
-        eyedropper: { onDown(x,y,e){}, onMove(x,y,e){}, onUp(x,y,e){}, onCursor(x,y){} },
+        eyedropper: { onDown(x,y,e){}, onMove(x,y,e){}, onUp(x,y,e){}, onCursor(x,y){} },  // replaced below
       };
       let isDrawing = false;
 
@@ -1228,6 +1235,59 @@
         },
       };
 
+      // ── Eyedropper tool implementation ───────────────────────────────────────
+      tools.eyedropper = {
+        onDown(x, y) {
+          const [r, g, b, a] = getPixel(x, y);
+          if (a === 0) {
+            // Transparent pixel: do NOT change foreground color
+            // Hover swatch already shows transparent indicator from onCursor
+            return;
+          }
+          EditorState.foregroundColor = [r, g, b, 255];
+          syncColorUI();
+          // Restore previous tool and clear eyedropper UI
+          setActiveTool(EditorState._prevTool || 'pencil');
+          const hoverSwatch = document.getElementById('eyedropper-hover-swatch');
+          const transparentLabel = document.getElementById('eyedropper-transparent-label');
+          if (hoverSwatch) hoverSwatch.style.display = 'none';
+          if (transparentLabel) transparentLabel.style.display = 'none';
+        },
+        onMove() {},
+        onUp() {},
+        onCursor(x, y) {
+          // Draw crosshair on cursor-canvas
+          cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+          cursorCtx.strokeStyle = 'rgba(255,255,255,0.9)';
+          cursorCtx.lineWidth = 1 / (window.devicePixelRatio || 1);
+          // Vertical line
+          cursorCtx.beginPath();
+          cursorCtx.moveTo(x, Math.max(0, y - 3));
+          cursorCtx.lineTo(x, Math.min(EditorState.height, y + 4));
+          cursorCtx.stroke();
+          // Horizontal line
+          cursorCtx.beginPath();
+          cursorCtx.moveTo(Math.max(0, x - 3), y);
+          cursorCtx.lineTo(Math.min(EditorState.width, x + 4), y);
+          cursorCtx.stroke();
+
+          // Update hover swatch in picker panel
+          const [r, g, b, a] = getPixel(x, y);
+          const hoverSwatch = document.getElementById('eyedropper-hover-swatch');
+          const transparentLabel = document.getElementById('eyedropper-transparent-label');
+          if (a === 0) {
+            if (hoverSwatch) hoverSwatch.style.display = 'none';
+            if (transparentLabel) transparentLabel.style.display = 'inline';
+          } else {
+            if (hoverSwatch) {
+              hoverSwatch.style.display = 'block';
+              hoverSwatch.style.background = 'rgb(' + r + ',' + g + ',' + b + ')';
+            }
+            if (transparentLabel) transparentLabel.style.display = 'none';
+          }
+        },
+      };
+
       // ── END Tool dispatch ─────────────────────────────────────────────────────
 
       // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
@@ -1293,6 +1353,14 @@
           if (e.key === 'b' || e.key === 'B') setActiveTool('pencil');
           if (e.key === 'e' || e.key === 'E') setActiveTool('eraser');
           if (e.key === 'g' || e.key === 'G') setActiveTool('bucket');
+        }
+        // Eyedropper cancel: Escape restores _prevTool, clears hover UI
+        if (e.key === 'Escape' && EditorState.activeTool === 'eyedropper') {
+          setActiveTool(EditorState._prevTool || 'pencil');
+          const hoverSwatch = document.getElementById('eyedropper-hover-swatch');
+          const transparentLabel = document.getElementById('eyedropper-transparent-label');
+          if (hoverSwatch) hoverSwatch.style.display = 'none';
+          if (transparentLabel) transparentLabel.style.display = 'none';
         }
       });
     });
