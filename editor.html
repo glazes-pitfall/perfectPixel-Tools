@@ -395,11 +395,12 @@
 
     /**
      * Apply a new zoom level, keeping the given viewport point stationary.
-     * Uses CSS transform: scale() on #zoom-container. Range: 1x–64x.
+     * Uses CSS transform: scale() on #zoom-container. Range: 0.25x–64x (fractional).
      */
     function applyZoom(newZoom, pivotClientX, pivotClientY) {
       const oldZoom = EditorState.zoom;
-      newZoom = Math.max(1, Math.min(64, newZoom));
+      // Clamp to [0.25, 64], allow fractional values for smooth zoom
+      newZoom = Math.max(0.25, Math.min(64, newZoom));
       const area  = document.getElementById('canvas-area');
       const rect  = area.getBoundingClientRect();
       const pivotX = pivotClientX - rect.left + area.scrollLeft;
@@ -408,7 +409,9 @@
       area.scrollTop  = pivotY * (newZoom / oldZoom) - (pivotClientY - rect.top);
       EditorState.zoom = newZoom;
       document.getElementById('zoom-container').style.transform = `scale(${newZoom})`;
-      document.getElementById('zoom-display').textContent = newZoom + 'x';
+      // Display: show one decimal place, drop trailing zero (e.g. "4.0x" → "4x", "1.25x")
+      const display = Number.isInteger(newZoom) ? newZoom + 'x' : newZoom.toFixed(1) + 'x';
+      document.getElementById('zoom-display').textContent = display;
     }
 
     /**
@@ -495,32 +498,28 @@
         canvasArea.scrollTop  += pixelDeltaY;
       }, { passive: false });
 
-      // Top bar Zoom + / - buttons (pivot = canvas area center)
+      // Top bar Zoom + / - buttons (pivot = canvas area center, multiplicative ×1.25)
       document.getElementById('btn-zoom-in').addEventListener('click', () => {
-        const step = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
         const rect = canvasArea.getBoundingClientRect();
-        applyZoom(EditorState.zoom + step, rect.left + rect.width / 2, rect.top + rect.height / 2);
+        applyZoom(EditorState.zoom * 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
       });
       document.getElementById('btn-zoom-out').addEventListener('click', () => {
-        const step = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
         const rect = canvasArea.getBoundingClientRect();
-        applyZoom(EditorState.zoom - step, rect.left + rect.width / 2, rect.top + rect.height / 2);
+        applyZoom(EditorState.zoom / 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
       });
 
-      // Keyboard zoom (Ctrl+= / Ctrl+-)
+      // Keyboard zoom (Ctrl+= / Ctrl+-, multiplicative ×1.25)
       document.addEventListener('keydown', e => {
         if (e.target.matches('input, textarea')) return;
         if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
           e.preventDefault();
-          const step = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
           const rect = canvasArea.getBoundingClientRect();
-          applyZoom(EditorState.zoom + step, rect.left + rect.width / 2, rect.top + rect.height / 2);
+          applyZoom(EditorState.zoom * 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
         }
         if ((e.ctrlKey || e.metaKey) && e.key === '-') {
           e.preventDefault();
-          const step = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
           const rect = canvasArea.getBoundingClientRect();
-          applyZoom(EditorState.zoom - step, rect.left + rect.width / 2, rect.top + rect.height / 2);
+          applyZoom(EditorState.zoom / 1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
         }
       });
     });
