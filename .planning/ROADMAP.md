@@ -121,7 +121,7 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/3 | In Progress|  |
-| 2. History | 0/2 | Not started | - |
+| 2. History | 1/2 | In Progress|  |
 | 3. Core Tools | 0/TBD | Not started | - |
 | 4. Palette Panel | 0/TBD | Not started | - |
 | 5. Selection Tools | 0/TBD | Not started | - |

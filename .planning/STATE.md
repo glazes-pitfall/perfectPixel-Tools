@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02"
+last_updated: "2026-03-02T16:31:03.665Z"
 progress:
-  total_phases: 7
+  total_phases: 2
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 5
+  completed_plans: 4
 ---
 
 # Project State
@@ -48,6 +48,7 @@ Progress: [████░░░░░░] 14%
 
 *Updated after each plan completion*
 | Phase 01-foundation P02 | 1 | 2 tasks | 1 files |
+| Phase 02-history P01 | 2 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,7 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: pixel-canvas: NO DPR; overlay canvases: DPR-scaled — this must be correct from day one to avoid global coordinate breakage
 - [Post-01 quick fix]: Zoom/pan uses PAD=2000 scroll-space (#zoom-scroll-content, not flexbox centering); centerCanvas() MUST apply transform:scale(zoom) or canvas renders at 1x visually despite EditorState.zoom=4; applyZoom pivot math: (px-PAD)*(newZoom/oldZoom)+PAD-pxInArea
 - [Post-01 quick fix]: Button/kbd zoom snaps to power-of-2 levels (SNAP_LEVELS); trackpad pinch stays continuous float; factor 1.05 per trackpad tick
+- [Phase 02-history]: MAX_HISTORY=100 (CONTEXT.md decision); canUndo condition historyIndex>0; overflow via history.shift(); TEMP SCAFFOLD in cursorCanvas pointerdown flagged for Phase 3 removal
 
 ### Pending Todos
 

@@ -25,8 +25,8 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 
 ### HIST — 撤销/重做
 
-- [ ] **HIST-01**: 支持撤销（Cmd+Z）/ 重做（Shift+Cmd+Z），覆盖所有绘图、变换、画布大小调整操作
-- [ ] **HIST-02**: 撤销/重做按钮常驻顶栏右侧
+- [x] **HIST-01**: 支持撤销（Cmd+Z）/ 重做（Shift+Cmd+Z），覆盖所有绘图、变换、画布大小调整操作
+- [x] **HIST-02**: 撤销/重做按钮常驻顶栏右侧
 
 ### CLR — 常驻调色盘
 
@@ -107,8 +107,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CANVAS-01 | Phase 1 | Complete |
 | CANVAS-02 | Phase 1 | Complete |
 | CANVAS-03 | Phase 7 | Pending |
-| HIST-01 | Phase 2 | Pending |
-| HIST-02 | Phase 2 | Pending |
+| HIST-01 | Phase 2 | Complete |
+| HIST-02 | Phase 2 | Complete |
 | CLR-01 | Phase 3 | Pending |
 | CLR-02 | Phase 3 | Pending |
 | CLR-03 | Phase 3 | Pending |
