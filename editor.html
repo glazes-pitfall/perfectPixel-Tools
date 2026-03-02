@@ -344,6 +344,8 @@
       const zc = document.getElementById('zoom-container');
       zc.style.width  = width  + 'px';
       zc.style.height = height + 'px';
+      // Center canvas in scroll space
+      centerCanvas();
     }
 
     /**
@@ -388,22 +390,79 @@
     }
 
     /**
+     * PAD: virtual scroll padding (px) around canvas in scroll-content.
+     * Ensures scroll headroom exists even when canvas is smaller than viewport.
+     * Must match the left/top set in centerCanvas().
+     */
+    const PAD = 2000;
+
+    /**
+     * Clamp scroll position so canvas is never fully off-screen.
+     * At least Math.min(canvas_dim * zoom, 100) px of canvas remain visible.
+     */
+    function clampScroll(area) {
+      const zoom = EditorState.zoom;
+      const W = EditorState.width  * zoom;
+      const H = EditorState.height * zoom;
+      const minVisible = 100; // px of canvas that must stay on screen
+      const minX = PAD - area.clientWidth  + Math.min(W, minVisible);
+      const maxX = PAD + W - Math.min(W, minVisible);
+      const minY = PAD - area.clientHeight + Math.min(H, minVisible);
+      const maxY = PAD + H - Math.min(H, minVisible);
+      area.scrollLeft = Math.max(minX, Math.min(maxX, area.scrollLeft));
+      area.scrollTop  = Math.max(minY, Math.min(maxY, area.scrollTop));
+    }
+
+    /**
+     * Set scroll-content dimensions and center the canvas in the viewport.
+     * Call after initCanvases() and after loading a new image.
+     */
+    function centerCanvas() {
+      const area = document.getElementById('canvas-area');
+      const sc   = document.getElementById('zoom-scroll-content');
+      const zoom = EditorState.zoom;
+      const W = EditorState.width  * zoom;
+      const H = EditorState.height * zoom;
+      // Scroll content must be large enough to hold canvas + PAD on all sides
+      sc.style.width  = (2 * PAD + W) + 'px';
+      sc.style.height = (2 * PAD + H) + 'px';
+      // Position zoom-container at (PAD, PAD) in scroll-content
+      const zc = document.getElementById('zoom-container');
+      zc.style.left = PAD + 'px';
+      zc.style.top  = PAD + 'px';
+      // Center scroll: pivot = canvas center → align to viewport center
+      area.scrollLeft = PAD + W / 2 - area.clientWidth  / 2;
+      area.scrollTop  = PAD + H / 2 - area.clientHeight / 2;
+      clampScroll(area);
+    }
+
+    /**
      * Apply a new zoom level, keeping the given viewport point stationary.
      * Uses CSS transform: scale() on #zoom-container. Range: 0.25x–64x (fractional).
      */
     function applyZoom(newZoom, pivotClientX, pivotClientY) {
       const oldZoom = EditorState.zoom;
-      // Clamp to [0.25, 64], allow fractional values for smooth zoom
       newZoom = Math.max(0.25, Math.min(64, newZoom));
-      const area  = document.getElementById('canvas-area');
-      const rect  = area.getBoundingClientRect();
-      const pivotX = pivotClientX - rect.left + area.scrollLeft;
-      const pivotY = pivotClientY - rect.top  + area.scrollTop;
-      area.scrollLeft = pivotX * (newZoom / oldZoom) - (pivotClientX - rect.left);
-      area.scrollTop  = pivotY * (newZoom / oldZoom) - (pivotClientY - rect.top);
+      const area = document.getElementById('canvas-area');
+      const sc   = document.getElementById('zoom-scroll-content');
+      // Update scroll-content size for new zoom (must happen BEFORE adjusting scroll)
+      const newW = EditorState.width  * newZoom;
+      const newH = EditorState.height * newZoom;
+      sc.style.width  = (2 * PAD + newW) + 'px';
+      sc.style.height = (2 * PAD + newH) + 'px';
+      // Pivot in scroll-content coordinates
+      const areaRect = area.getBoundingClientRect();
+      const pxInArea = pivotClientX - areaRect.left;
+      const pyInArea = pivotClientY - areaRect.top;
+      const px = area.scrollLeft + pxInArea;  // position in scroll-content
+      const py = area.scrollTop  + pyInArea;
+      // Keep canvas pixel under pivot stationary:
+      // canvas_x = (px - PAD) / oldZoom  →  new_scroll = canvas_x * newZoom + PAD - pxInArea
+      area.scrollLeft = (px - PAD) * (newZoom / oldZoom) + PAD - pxInArea;
+      area.scrollTop  = (py - PAD) * (newZoom / oldZoom) + PAD - pyInArea;
       EditorState.zoom = newZoom;
       document.getElementById('zoom-container').style.transform = `scale(${newZoom})`;
-      // Display: show one decimal place, drop trailing zero (e.g. "4.0x" → "4x", "1.25x")
+      clampScroll(area);
       const display = Number.isInteger(newZoom) ? newZoom + 'x' : newZoom.toFixed(1) + 'x';
       document.getElementById('zoom-display').textContent = display;
     }
@@ -477,9 +536,8 @@
         // Trackpad pinch (and Ctrl+scroll) → zoom
         // Browser synthesizes pinch as wheel event with e.ctrlKey = true
         if (e.ctrlKey) {
-          // deltaY is negative when expanding (zoom in), positive when pinching (zoom out)
-          // Use multiplicative factor for smooth continuous zoom
-          const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+          // Trackpad pinch — sensitivity ≈ 1/4 of previous (1.025 vs 1.1)
+          const factor = e.deltaY < 0 ? 1.025 : 1 / 1.025;
           applyZoom(EditorState.zoom * factor, e.clientX, e.clientY);
           return;
         }
@@ -490,6 +548,7 @@
         const pixelDeltaY = e.deltaMode === 0 ? e.deltaY : e.deltaY * 20;
         canvasArea.scrollLeft += pixelDeltaX;
         canvasArea.scrollTop  += pixelDeltaY;
+        clampScroll(canvasArea);
       }, { passive: false });
 
       // Top bar Zoom + / - buttons (pivot = canvas area center, multiplicative ×1.25)
