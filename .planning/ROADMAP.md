@@ -4,6 +4,33 @@
 
 Ver 1.2 adds a full browser-based pixel art editor (`editor.html`) to the existing Ver 1.1 grid-alignment pipeline. The build follows a strict technical dependency chain: the pixel buffer and coordinate system (Foundation) must be correct before History, which must exist before Core Tools, which must be stable before Selection, which Selection must precede Transform. Canvas Config and the Integration handoff from Ver 1.1 close out the release once all editor capabilities are verified. Every phase delivers a coherent, independently testable capability.
 
+## Global Architectural Constraints
+
+> These constraints apply to ALL phases. Downstream agents must enforce them unconditionally.
+
+### Color Model: Tool Output Constraint
+
+Editor **tools** may only write pixels in one of two states:
+- **Fully opaque**: alpha = 255 (有色像素)
+- **Fully transparent**: alpha = 0 (透明像素)
+
+**No tool or operation may actively produce semi-transparent pixels (0 < alpha < 255).** Existing semi-transparent pixels that come from the original loaded image are left untouched — they are simply preserved as-is without modification.
+
+### Transparent Pixel Triggers (Exhaustive List)
+
+Alpha = 0 pixels may only be introduced through:
+- (a) Eraser tool stroke
+- (b) Selection active + Delete key pressed
+- (c) Original loaded image already contains transparent or semi-transparent pixels (kept as-is, no normalization)
+
+No other operation may produce alpha = 0 pixels.
+
+### Palette Counting
+
+- 色卡限制只处理 RGB 三个数值；色卡中的所有颜色均为实心色（alpha = 255），不存在带 Alpha 通道的颜色条目。
+- 透明像素（alpha = 0）及半透明像素（0 < alpha < 255）不计入色卡的颜色数量统计。
+- The palette contains only fully-opaque RGB colors.
+
 ## Phases
 
 **Phase Numbering:**
@@ -66,7 +93,13 @@ Plans:
   4. User can flood-fill a bounded region with Paint Bucket (G) using adjustable tolerance and contiguous/non-contiguous mode
   5. The permanent color picker (bottom-left) lets the user set the active drawing color via HSL wheel, eyedropper click on the canvas, hex input, or RGB inputs — all four update the same active color
   6. Enabling Pixel-perfect mode on the Pencil visually removes the extra corner pixel that appears on diagonal strokes
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — 移除 Phase 2 脚手架 + 工具调度基础设施 + 铅笔工具 + 橡皮工具
+- [ ] 03-02-PLAN.md — Paint Bucket 工具（BFS 填充）+ 顶栏工具参数 UI
+- [ ] 03-03-PLAN.md — 常驻调色盘：HSL 色轮 + Hex/RGB 输入 + 取色器工具
+- [ ] 03-04-PLAN.md — Playwright 自动化验证 + 人工目视验证检查点
 
 ### Phase 4: Palette Panel
 **Goal**: The Ver 1.1 palette system is available inside the editor and stays in sync with the active drawing color
