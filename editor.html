@@ -473,12 +473,26 @@
       // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
       const canvasArea = document.getElementById('canvas-area');
 
-      // Wheel zoom (passive:false required so e.preventDefault() is respected)
+      // Wheel / trackpad events (passive:false required for preventDefault)
       canvasArea.addEventListener('wheel', e => {
         e.preventDefault();
-        const delta = e.deltaY < 0 ? 1 : -1;
-        const step  = EditorState.zoom < 4 ? 1 : EditorState.zoom < 16 ? 2 : 4;
-        applyZoom(EditorState.zoom + delta * step, e.clientX, e.clientY);
+
+        // Trackpad pinch (and Ctrl+scroll) → zoom
+        // Browser synthesizes pinch as wheel event with e.ctrlKey = true
+        if (e.ctrlKey) {
+          // deltaY is negative when expanding (zoom in), positive when pinching (zoom out)
+          // Use multiplicative factor for smooth continuous zoom
+          const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+          applyZoom(EditorState.zoom * factor, e.clientX, e.clientY);
+          return;
+        }
+
+        // Two-finger scroll → pan (translate scroll position)
+        // deltaMode 0 = pixels (trackpad), 1 = lines, 2 = pages
+        const pixelDeltaX = e.deltaMode === 0 ? e.deltaX : e.deltaX * 20;
+        const pixelDeltaY = e.deltaMode === 0 ? e.deltaY : e.deltaY * 20;
+        canvasArea.scrollLeft += pixelDeltaX;
+        canvasArea.scrollTop  += pixelDeltaY;
       }, { passive: false });
 
       // Top bar Zoom + / - buttons (pivot = canvas area center)
