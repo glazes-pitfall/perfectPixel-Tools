@@ -58,7 +58,7 @@ Plans:
 **Goal**: User can draw, erase, and flood-fill pixels on the canvas, selecting colors with the permanent color picker
 **Depends on**: Phase 2
 **Requirements**: DRAW-01, DRAW-02, DRAW-03, DRAW-04, DRAW-05, DRAW-06, CLR-01, CLR-02, CLR-03, CLR-04
-**Implementation note**: First task of this phase is to remove the Phase 2 temporary test scaffold (the canvas click listener used for history verification).
+**Implementation note**: First task of this phase is to remove the Phase 2 temporary test scaffold (the canvas click listener used for history verification). History convention (established in Phase 2): use the "save-after" model — call `pushHistory()` **after** pixel changes are applied, not before. For stroke tools (Pencil, Eraser), call `pushHistory()` on `pointerup` (after stroke completes), not on `pointerdown`. For instant-apply tools (Paint Bucket), call `pushHistory()` immediately after the fill operation.
 **Success Criteria** (what must be TRUE):
   1. The Phase 2 test scaffold (temporary click listener) has been removed from the codebase
   2. User can draw on the canvas with Pencil (B) using round or square brush shapes at any integer diameter from 1px up, and each stroke is one undo step
