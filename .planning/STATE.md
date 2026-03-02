@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T19:13:28.505Z"
+last_updated: "2026-03-02T19:19:08.864Z"
 progress:
   total_phases: 3
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -23,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 3 of 7 (Core Tools) — IN PROGRESS
-Plan: 2/4 complete
-Status: Phase 3 Plan 02 done — Paint Bucket (BFS floodFill) + top-bar tool settings UI complete; ready for 03-03 (Eyedropper)
-Last activity: 2026-03-03 - Completed 03-02: floodFill BFS, tools.bucket, tool settings panels
+Plan: 3/4 complete
+Status: Phase 3 Plan 03 done — Permanent color picker panel (HSL wheel + hex/RGB + eyedropper) complete; ready for 03-04
+Last activity: 2026-03-03 - Completed 03-03: color picker panel, syncColorUI, eyedropper tool
 
-Progress: [█████████░] 43%
+Progress: [██████████] 50%
 
 ## Performance Metrics
 
@@ -52,6 +52,7 @@ Progress: [█████████░] 43%
 | Phase 02-history P02 | 4 | 2 tasks | 0 files |
 | Phase 03-core-tools P01 | 4 | 2 tasks | 1 files |
 | Phase 03-core-tools P02 | 4 | 2 tasks | 1 files |
+| Phase 03-core-tools P03 | 3 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,9 @@ Recent decisions affecting current work:
 - [Phase 03-core-tools]: Save-before model for bucket: pushHistory() called before floodFill() — safe for instant-apply tools
 - [Phase 03-core-tools]: [03-02]: Pencil and Eraser use separate size inputs so each tool remembers its size independently
 - [Phase 03-core-tools]: [03-02]: floodFill BFS uses visited-before-push Uint8Array bitmap pattern; non-contiguous mode uses simple double loop
+- [Phase 03-core-tools]: createConicGradient for HSL hue ring — single draw call, no pixel-by-pixel rendering
+- [Phase 03-core-tools]: _syncLock guard prevents infinite color update loop across wheel/hex/RGB/swatch controls
+- [Phase 03-core-tools]: Eyedropper reads from EditorState.pixels via getPixel(), never ctx.getImageData() to avoid premultiplied alpha corruption
 
 ### Pending Todos
 
@@ -102,6 +106,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 03-02-PLAN.md — Paint Bucket + Tool Settings UI complete
-Next: Phase 3 Plan 03 — Eyedropper tool
+Stopped at: Completed 03-03-PLAN.md — Color Picker Panel + Eyedropper tool complete
+Next: Phase 3 Plan 04
 Resume file: None

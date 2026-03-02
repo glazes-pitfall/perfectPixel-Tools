@@ -30,10 +30,10 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 
 ### CLR — 常驻调色盘
 
-- [ ] **CLR-01**: 颜色选择器（色相-饱和度实现），常驻左下角，不随面板折叠消失
-- [ ] **CLR-02**: 取色器（Eyedropper），点击画布像素取色并同步至调色盘
-- [ ] **CLR-03**: 十六进制颜色输入框（支持手动键入）
-- [ ] **CLR-04**: RGB 三通道数值输入框（支持手动键入）
+- [x] **CLR-01**: 颜色选择器（色相-饱和度实现），常驻左下角，不随面板折叠消失
+- [x] **CLR-02**: 取色器（Eyedropper），点击画布像素取色并同步至调色盘
+- [x] **CLR-03**: 十六进制颜色输入框（支持手动键入）
+- [x] **CLR-04**: RGB 三通道数值输入框（支持手动键入）
 
 ### PAL — 色卡面板扩展
 
@@ -109,10 +109,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CANVAS-03 | Phase 7 | Pending |
 | HIST-01 | Phase 2 | Complete |
 | HIST-02 | Phase 2 | Complete |
-| CLR-01 | Phase 3 | Pending |
-| CLR-02 | Phase 3 | Pending |
-| CLR-03 | Phase 3 | Pending |
-| CLR-04 | Phase 3 | Pending |
+| CLR-01 | Phase 3 | Complete |
+| CLR-02 | Phase 3 | Complete |
+| CLR-03 | Phase 3 | Complete |
+| CLR-04 | Phase 3 | Complete |
 | PAL-01 | Phase 4 | Pending |
 | PAL-02 | Phase 4 | Pending |
 | DRAW-01 | Phase 3 | Complete |
