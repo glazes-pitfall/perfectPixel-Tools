@@ -67,6 +67,8 @@ Recent decisions affecting current work:
 - [Phase 01-foundation]: Tasks 1 and 2 committed together — splitting would create broken intermediate state with incomplete function references
 - [Phase 01-foundation]: initCanvases() sets explicit size on #zoom-container for correct CSS overflow/scroll
 - [Phase 01-foundation]: pixel-canvas: NO DPR; overlay canvases: DPR-scaled — this must be correct from day one to avoid global coordinate breakage
+- [Post-01 quick fix]: Zoom/pan uses PAD=2000 scroll-space (#zoom-scroll-content, not flexbox centering); centerCanvas() MUST apply transform:scale(zoom) or canvas renders at 1x visually despite EditorState.zoom=4; applyZoom pivot math: (px-PAD)*(newZoom/oldZoom)+PAD-pxInArea
+- [Post-01 quick fix]: Button/kbd zoom snaps to power-of-2 levels (SNAP_LEVELS); trackpad pinch stays continuous float; factor 1.05 per trackpad tick
 
 ### Pending Todos
 
