@@ -15,8 +15,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 1: Foundation** - Editor page structure, pixel buffer, coordinate system, and zoom infrastructure
 - [ ] **Phase 2: History** - Snapshot-based undo/redo covering all editor operations
 - [ ] **Phase 3: Core Tools** - Pencil, Eraser, Paint Bucket tools with integrated color picker
-- [ ] **Phase 4: Palette Panel** - Palette swatch integration with bidirectional color picker sync
-- [ ] **Phase 5: Selection Tools** - Rectangle Marquee and Magic Wand with animated marching ants
+- [ ] **Phase 4: Palette Panel** ⟋ **(parallel with Phase 5)** - Palette swatch integration with bidirectional color picker sync
+- [ ] **Phase 5: Selection Tools** ⟋ **(parallel with Phase 4)** - Rectangle Marquee and Magic Wand with animated marching ants
 - [ ] **Phase 6: Transform** - Move, 8-handle scale, and RotSprite rotation on selections
 - [ ] **Phase 7: Integration** - Canvas Size tool, Open-in-Editor entry point, and download/save wiring
 
@@ -71,7 +71,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 5: Selection Tools
 **Goal**: User can isolate a region of the canvas using Rectangle Marquee or Magic Wand, and drawing tools respect the selection boundary
-**Depends on**: Phase 4
+**Depends on**: Phase 3 (runs in parallel with Phase 4)
 **Requirements**: SEL-01, SEL-02, SEL-03, SEL-04, SEL-05
 **Success Criteria** (what must be TRUE):
   1. Dragging Rectangle Marquee (M) on the canvas produces a selection that snaps to the detected pixel art grid, with a 1px animated marching-ants border visible during and after dragging
@@ -82,7 +82,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 6: Transform
 **Goal**: User can move, scale, and rotate the contents of a selection using pixel-art-safe algorithms
-**Depends on**: Phase 5
+**Depends on**: Phase 4 and Phase 5 (both must be complete)
 **Requirements**: XFM-01, XFM-02, XFM-03, XFM-04, XFM-05
 **Success Criteria** (what must be TRUE):
   1. With a selection active, Move Tool (V) lets the user drag selection contents to a new position; pixel distances from each canvas edge are displayed while dragging
@@ -106,7 +106,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
+1 → 2 → 3 → [4 ∥ 5] → 6 → 7
+Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phase 3 completes.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
