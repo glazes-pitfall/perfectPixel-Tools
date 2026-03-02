@@ -48,7 +48,11 @@ Plans:
   2. After undoing, pressing Shift+Cmd+Z re-applies the actions in order
   3. Undo and redo buttons are visible and active in the top bar at all times
   4. Each canvas click counts as exactly one undo step (confirmed by verifying the history stack length equals the number of clicks)
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — pushHistory/undo/redo 实现、MAX_HISTORY=100、按钮状态管理、键盘快捷键、临时测试脚手架
+- [ ] 02-02-PLAN.md — Playwright 自动化验证 + 人工视觉验证检查点（Phase 2 成功标准全部确认）
 
 ### Phase 3: Core Tools
 **Goal**: User can draw, erase, and flood-fill pixels on the canvas, selecting colors with the permanent color picker
@@ -117,7 +121,7 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/3 | In Progress|  |
-| 2. History | 0/TBD | Not started | - |
+| 2. History | 0/2 | Not started | - |
 | 3. Core Tools | 0/TBD | Not started | - |
 | 4. Palette Panel | 0/TBD | Not started | - |
 | 5. Selection Tools | 0/TBD | Not started | - |
