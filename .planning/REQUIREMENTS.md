@@ -19,8 +19,8 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 
 ### CANVAS — 画布渲染
 
-- [ ] **CANVAS-01**: 画布支持缩放（CSS transform），缩放时工具坐标系保持 1:1 像素精度
-- [ ] **CANVAS-02**: 画布以 `image-rendering: pixelated` 渲染，禁止插值模糊
+- [x] **CANVAS-01**: 画布支持缩放（CSS transform），缩放时工具坐标系保持 1:1 像素精度
+- [x] **CANVAS-02**: 画布以 `image-rendering: pixelated` 渲染，禁止插值模糊
 - [ ] **CANVAS-03**: 中央画布下方提供精准版下载和 N 倍放大版下载
 
 ### HIST — 撤销/重做
@@ -104,8 +104,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-01 | Phase 1 | Complete |
 | UI-02 | Phase 1 | Complete |
 | UI-03 | Phase 7 | Pending |
-| CANVAS-01 | Phase 1 | Pending |
-| CANVAS-02 | Phase 1 | Pending |
+| CANVAS-01 | Phase 1 | Complete |
+| CANVAS-02 | Phase 1 | Complete |
 | CANVAS-03 | Phase 7 | Pending |
 | HIST-01 | Phase 2 | Pending |
 | HIST-02 | Phase 2 | Pending |

@@ -1,3 +1,16 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: unknown
+last_updated: "2026-03-02T13:51:11.911Z"
+progress:
+  total_phases: 1
+  completed_phases: 0
+  total_plans: 3
+  completed_plans: 2
+---
+
 # Project State
 
 ## Project Reference
@@ -10,11 +23,11 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 1 of 7 (Foundation)
-Plan: 1 of TBD in current phase
+Plan: 2 of TBD in current phase
 Status: In progress
-Last activity: 2026-03-02 — Plan 01-01 complete: editor.html skeleton + Flask routes
+Last activity: 2026-03-02 — Plan 01-02 complete: 3-canvas init, zoom system, pixel inspector
 
-Progress: [█░░░░░░░░░] 5%
+Progress: [██░░░░░░░░] 10%
 
 ## Performance Metrics
 
@@ -34,6 +47,7 @@ Progress: [█░░░░░░░░░] 5%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01-foundation P02 | 1 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -50,6 +64,9 @@ Recent decisions affecting current work:
 - [01-01]: Checkerboard on #zoom-container (inside CSS transform) so cells scale with zoom per CONTEXT.md
 - [01-01]: Zoom buttons active in Phase 1 (bypass applyZoom stub); Phase 02 provides full scroll-adjusted implementation
 - [01-01]: output.png served via explicit Flask route, not static_folder, for security
+- [Phase 01-foundation]: Tasks 1 and 2 committed together — splitting would create broken intermediate state with incomplete function references
+- [Phase 01-foundation]: initCanvases() sets explicit size on #zoom-container for correct CSS overflow/scroll
+- [Phase 01-foundation]: pixel-canvas: NO DPR; overlay canvases: DPR-scaled — this must be correct from day one to avoid global coordinate breakage
 
 ### Pending Todos
 
@@ -57,12 +74,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Pre-Phase 1]: Three pitfalls must be addressed in Phase 1 or they cascade everywhere: premultiplied alpha isolation (never read from canvas element), correct DPR handling (pixel canvas dimensions = image dimensions exactly), `willReadFrequently: true` on pixel canvas context
+- [RESOLVED in 01-02]: Three Phase 1 pitfalls addressed: premultiplied alpha isolation (EditorState.pixels only), correct DPR handling (pixel canvas = image dimensions, overlay canvases = image x DPR), `willReadFrequently: true` on pixel canvas first getContext call
 - [Pre-Phase 6]: RotSprite JS boundary behavior needs unit tests before integration; enforce 128x128 pixel hard limit on selections to prevent memory freeze
 - [Pre-Phase 7]: sessionStorage quota fallback design (Flask `/api/editor/init` token endpoint) must be decided before Phase 7 planning begins
 
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Phase 1 Plan 01 complete — editor.html skeleton and Flask routes committed
+Stopped at: Phase 1 Plan 02 complete — 3-canvas init, pixel buffer, zoom system, pixel inspector implemented
 Resume file: None
