@@ -1860,6 +1860,50 @@
       } catch (err) { palShowStatus('导出失败：' + err.message, 'error'); }
     }
 
+    // ── PAL-02: applyPalette — non-destructive preview via /api/apply-palette ──
+    async function applyPalette() {
+      const b64 = getEditorImageB64();
+      if (!b64 || currentPalette.length === 0) return;
+      const btn = document.getElementById('applyPaletteBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '处理中...'; }
+      try {
+        const mode = document.querySelector('input[name=mappingMode]:checked')?.value || 'nearest';
+        const fd = new FormData();
+        fd.append('image', b64);
+        fd.append('palette', JSON.stringify(currentPalette));
+        fd.append('mode', mode);
+        fd.append('scale', '4');
+        const res = await fetch('/api/apply-palette', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) { palShowStatus('色卡应用失败: ' + (data.error || res.status), 'error'); return; }
+        // Preview only — EditorState.pixels NOT modified; pushHistory NOT called
+        const exactSrc  = 'data:image/png;base64,' + data.output;
+        const scaledSrc = 'data:image/png;base64,' + (data.output_scaled || data.output);
+        const origSrc   = 'data:image/png;base64,' + b64;
+        const origImg = document.getElementById('pal-result-original');
+        const origDl  = document.getElementById('pal-dl-orig-exact');
+        const mapImg  = document.getElementById('pal-result-mapped');
+        const mapDl   = document.getElementById('pal-dl-mapped-exact');
+        const mapDlSc = document.getElementById('pal-dl-mapped-scaled');
+        if (origImg) origImg.src = origSrc;
+        if (origDl)  origDl.href = origSrc;
+        if (mapImg)  mapImg.src  = exactSrc;
+        if (mapDl)   mapDl.href  = exactSrc;
+        if (mapDlSc) mapDlSc.href = scaledSrc;
+        const panel = document.getElementById('palette-result-panel');
+        if (panel) panel.style.display = 'flex';
+        palShowStatus('色卡已应用（预览模式，原图未修改）', 'success');
+      } catch (err) {
+        palShowStatus('色卡应用出错: ' + err.message, 'error');
+      } finally {
+        if (btn) {
+          btn.textContent = '应用色卡';
+          const palEnabled = document.getElementById('paletteEnabled');
+          btn.disabled = !(palEnabled && palEnabled.checked) || !EditorState.pixels || currentPalette.length === 0;
+        }
+      }
+    }
+
     // ── DOM ready ─────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
       // Acquire canvas element references before any operations
@@ -2380,7 +2424,10 @@
       // ── END Tool dispatch ─────────────────────────────────────────────────────
 
       // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
-      const canvasArea = document.getElementById('canvas-area');
+      // canvasArea: receives wheel events (entire area incl. result panel)
+      // zoomScrollEl: actual scroll container for canvas pan/zoom
+      const canvasArea   = document.getElementById('canvas-area');
+      const zoomScrollEl = document.getElementById('zoom-scroll-content');
 
       // Wheel / trackpad events (passive:false required for preventDefault)
       canvasArea.addEventListener('wheel', e => {
@@ -2399,18 +2446,18 @@
         // deltaMode 0 = pixels (trackpad), 1 = lines, 2 = pages
         const pixelDeltaX = e.deltaMode === 0 ? e.deltaX : e.deltaX * 20;
         const pixelDeltaY = e.deltaMode === 0 ? e.deltaY : e.deltaY * 20;
-        canvasArea.scrollLeft += pixelDeltaX;
-        canvasArea.scrollTop  += pixelDeltaY;
-        clampScroll(canvasArea);
+        zoomScrollEl.scrollLeft += pixelDeltaX;
+        zoomScrollEl.scrollTop  += pixelDeltaY;
+        clampScroll(zoomScrollEl);
       }, { passive: false });
 
       // Top bar Zoom + / - buttons (snap to power-of-2 levels: 0.25/0.5/1/2/4/8/16/32/64)
       document.getElementById('btn-zoom-in').addEventListener('click', () => {
-        const rect = canvasArea.getBoundingClientRect();
+        const rect = zoomScrollEl.getBoundingClientRect();
         applyZoom(snapZoomIn(EditorState.zoom), rect.left + rect.width / 2, rect.top + rect.height / 2);
       });
       document.getElementById('btn-zoom-out').addEventListener('click', () => {
-        const rect = canvasArea.getBoundingClientRect();
+        const rect = zoomScrollEl.getBoundingClientRect();
         applyZoom(snapZoomOut(EditorState.zoom), rect.left + rect.width / 2, rect.top + rect.height / 2);
       });
 
@@ -2419,12 +2466,12 @@
         if (e.target.matches('input, textarea')) return;
         if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
           e.preventDefault();
-          const rect = canvasArea.getBoundingClientRect();
+          const rect = zoomScrollEl.getBoundingClientRect();
           applyZoom(snapZoomIn(EditorState.zoom), rect.left + rect.width / 2, rect.top + rect.height / 2);
         }
         if ((e.ctrlKey || e.metaKey) && e.key === '-') {
           e.preventDefault();
-          const rect = canvasArea.getBoundingClientRect();
+          const rect = zoomScrollEl.getBoundingClientRect();
           applyZoom(snapZoomOut(EditorState.zoom), rect.left + rect.width / 2, rect.top + rect.height / 2);
         }
         // Undo: Cmd+Z (Mac) or Ctrl+Z
@@ -2725,12 +2772,17 @@
       if (exportGplEl) exportGplEl.addEventListener('click', () => exportPalette('gpl'));
       if (exportPalEl) exportPalEl.addEventListener('click', () => exportPalette('pal'));
 
-      // Apply palette button (stub — Plan 02 implements full version)
+      // Apply palette button (PAL-02 full implementation)
       const applyPaletteBtnEl = document.getElementById('applyPaletteBtn');
       if (applyPaletteBtnEl) {
-        applyPaletteBtnEl.addEventListener('click', () => {
-          // Plan 02 will implement full palette apply logic
-          palShowStatus('应用色卡功能将在 Plan 02 实现', 'info');
+        applyPaletteBtnEl.addEventListener('click', applyPalette);
+      }
+
+      // Palette result panel close button
+      const palResultCloseEl = document.getElementById('pal-result-close');
+      if (palResultCloseEl) {
+        palResultCloseEl.addEventListener('click', () => {
+          document.getElementById('palette-result-panel').style.display = 'none';
         });
       }
 
