@@ -2916,6 +2916,14 @@
           scaleY:           1.0,
           angleDeg:         0,
           origBbox:         { ...bb },
+          // _baseFloatPixels: source for all rotation operations — never overwritten.
+          // Guarantees that rotating back to 0° always restores the original content.
+          _baseFloatPixels: floatPx,
+          _baseFloatW:      bb.w,
+          _baseFloatH:      bb.h,
+          // _rotatePivot: visual center of float in canvas-pixel coords.
+          // Set at rotation drag start; stays fixed for the entire rotation session.
+          _rotatePivot:     { x: bb.x + bb.w / 2, y: bb.y + bb.h / 2 },
           _dragMode:        null,
           _dragStartClientX: 0, _dragStartClientY: 0,
           _dragStartFloatX:  0, _dragStartFloatY:  0,
@@ -3032,8 +3040,7 @@
       }
 
       // ── Plan 06-03: rotSprite (3× scale2x → NN rotate → 8× downsample) ───────
-      // Returns { pixels: Uint8ClampedArray, w: number, h: number }
-      // Output bounding box expands to contain all rotated pixels (no clipping).
+      // Returns Uint8ClampedArray of same size w×h (clips overflow — fast, for live preview).
       function rotSprite(pixels, w, h, angleDeg) {
         // Step 1: 8× upscale via 3 passes of scale2x
         let buf = pixels, bw = w, bh = h;
@@ -3043,25 +3050,20 @@
         }
         // bw === w * 8, bh === h * 8
 
-        // Rotated bounding box at 8× scale
+        // Step 2: nearest-neighbor rotate at 8× scale (inverse mapping)
         const rad = -angleDeg * Math.PI / 180;  // negative = clockwise in Y-down coords
         const cos = Math.cos(rad), sin = Math.sin(rad);
-        const absCos = Math.abs(cos), absSin = Math.abs(sin);
-        const outBw = Math.ceil(bw * absCos + bh * absSin);  // expanded width  at 8×
-        const outBh = Math.ceil(bw * absSin + bh * absCos);  // expanded height at 8×
-        const icx = bw / 2,    icy = bh / 2;     // input  center
-        const ocx = outBw / 2, ocy = outBh / 2;  // output center
+        const cx = bw / 2, cy = bh / 2;
+        const rotBuf = new Uint8ClampedArray(bw * bh * 4);
 
-        // Step 2: nearest-neighbor rotate into the expanded buffer (inverse mapping)
-        const rotBuf = new Uint8ClampedArray(outBw * outBh * 4);
-        for (let dy = 0; dy < outBh; dy++) {
-          for (let dx = 0; dx < outBw; dx++) {
-            const relX = dx - ocx, relY = dy - ocy;
-            const srcX = Math.round(relX * cos - relY * sin + icx);
-            const srcY = Math.round(relX * sin + relY * cos + icy);
+        for (let dy = 0; dy < bh; dy++) {
+          for (let dx = 0; dx < bw; dx++) {
+            const relX = dx - cx, relY = dy - cy;
+            const srcX = Math.round(relX * cos - relY * sin + cx);
+            const srcY = Math.round(relX * sin + relY * cos + cy);
             if (srcX >= 0 && srcX < bw && srcY >= 0 && srcY < bh) {
               const si = (srcY * bw + srcX) * 4;
-              const di = (dy * outBw + dx) * 4;
+              const di = (dy * bw + dx) * 4;
               rotBuf[di]   = buf[si];
               rotBuf[di+1] = buf[si+1];
               rotBuf[di+2] = buf[si+2];
@@ -3071,19 +3073,15 @@
           }
         }
 
-        // Output canvas-pixel dimensions (1/8 of 8× buffer)
-        const outW = Math.ceil(w * absCos + h * absSin);
-        const outH = Math.ceil(w * absSin + h * absCos);
-
         // Step 3: 8× downsample → center-sample of each 8×8 block (matches Aseprite)
-        const out = new Uint8ClampedArray(outW * outH * 4);
-        for (let oy = 0; oy < outH; oy++) {
-          for (let ox = 0; ox < outW; ox++) {
+        const out = new Uint8ClampedArray(w * h * 4);
+        for (let oy = 0; oy < h; oy++) {
+          for (let ox = 0; ox < w; ox++) {
             const sx = ox * 8 + 4;  // center of 8×8 block
             const sy = oy * 8 + 4;
-            if (sx < outBw && sy < outBh) {
-              const si = (sy * outBw + sx) * 4;
-              const di = (oy * outW + ox) * 4;
+            if (sx < bw && sy < bh) {
+              const si = (sy * bw + sx) * 4;
+              const di = (oy * w + ox) * 4;
               out[di]   = rotBuf[si];
               out[di+1] = rotBuf[si+1];
               out[di+2] = rotBuf[si+2];
@@ -3091,11 +3089,60 @@
             }
           }
         }
+        return out;
+      }
+
+      // rotSpriteExpanded: same RotSprite algorithm but output grows to fit rotated bbox.
+      // Returns { pixels: Uint8ClampedArray, w: number, h: number }.
+      // Only called ONCE on pointerup — not used for live preview.
+      function _rotSpriteExpanded(pixels, w, h, angleDeg) {
+        let buf = pixels, bw = w, bh = h;
+        for (let pass = 0; pass < 3; pass++) {
+          buf = scale2x(buf, bw, bh);
+          bw *= 2; bh *= 2;
+        }
+        const rad = -angleDeg * Math.PI / 180;
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+        const absCos = Math.abs(cos), absSin = Math.abs(sin);
+        const outBw = Math.ceil(bw * absCos + bh * absSin);
+        const outBh = Math.ceil(bw * absSin + bh * absCos);
+        const icx = bw / 2, icy = bh / 2;
+        const ocx = outBw / 2, ocy = outBh / 2;
+
+        const rotBuf = new Uint8ClampedArray(outBw * outBh * 4);
+        for (let dy = 0; dy < outBh; dy++) {
+          for (let dx = 0; dx < outBw; dx++) {
+            const relX = dx - ocx, relY = dy - ocy;
+            const srcX = Math.round(relX * cos - relY * sin + icx);
+            const srcY = Math.round(relX * sin + relY * cos + icy);
+            if (srcX >= 0 && srcX < bw && srcY >= 0 && srcY < bh) {
+              const si = (srcY * bw + srcX) * 4;
+              const di = (dy * outBw + dx) * 4;
+              rotBuf[di]   = buf[si];   rotBuf[di+1] = buf[si+1];
+              rotBuf[di+2] = buf[si+2]; rotBuf[di+3] = buf[si+3];
+            }
+          }
+        }
+        const outW = Math.ceil(w * absCos + h * absSin);
+        const outH = Math.ceil(w * absSin + h * absCos);
+        const out = new Uint8ClampedArray(outW * outH * 4);
+        for (let oy = 0; oy < outH; oy++) {
+          for (let ox = 0; ox < outW; ox++) {
+            const sx = ox * 8 + 4, sy = oy * 8 + 4;
+            if (sx < outBw && sy < outBh) {
+              const si = (sy * outBw + sx) * 4, di = (oy * outW + ox) * 4;
+              out[di]   = rotBuf[si];   out[di+1] = rotBuf[si+1];
+              out[di+2] = rotBuf[si+2]; out[di+3] = rotBuf[si+3];
+            }
+          }
+        }
         return { pixels: out, w: outW, h: outH };
       }
 
       // ── Plan 06-03: _applyRotationPreview ────────────────────────────────────
-      // Compound order: scale to scaleX/scaleY first, then rotSprite
+      // Live preview during drag: rotates from _baseFloatPixels (never compounds),
+      // keeps bbox at scaledW × scaledH (no expansion), centers on _rotatePivot.
+      // Compound order: scale first, then rotate.
       function _applyRotationPreview() {
         const ts = EditorState.transformState;
         if (!ts) return;
@@ -3108,35 +3155,69 @@
           return;
         }
 
-        // Compound order: scale first, then rotate
-        const srcPx = ts._origFloatPixels || ts.floatPixels;
-        const srcW  = ts._origFloatW      || ts.origBbox.w;
-        const srcH  = ts._origFloatH      || ts.origBbox.h;
+        // Always start from the original activation pixels — never from a previously
+        // rotated result. This guarantees reversibility (angle→0 restores original).
+        const srcPx = ts._baseFloatPixels;
+        const srcW  = ts._baseFloatW;
+        const srcH  = ts._baseFloatH;
 
+        // Apply scale (derived from ts.scaleX/Y — stable across rotation frames)
         let scaledPx = srcPx;
         let scaledW  = srcW;
         let scaledH  = srcH;
-
-        // Apply scale if non-unity
         if (Math.abs(ts.scaleX - 1.0) > 0.001 || Math.abs(ts.scaleY - 1.0) > 0.001) {
           scaledW = Math.max(1, Math.round(ts.origBbox.w * ts.scaleX));
           scaledH = Math.max(1, Math.round(ts.origBbox.h * ts.scaleY));
           scaledPx = scaleNearestNeighbor(srcPx, srcW, srcH, scaledW, scaledH);
         }
 
-        // Capture current visual center before updating dimensions (keeps pivot fixed)
-        const pivX = ts.floatX + ts.floatW / 2;
-        const pivY = ts.floatY + ts.floatH / 2;
+        // Ensure pivot exists (fallback for Angle° input box without a drag start)
+        if (!ts._rotatePivot) {
+          ts._rotatePivot = { x: ts.floatX + ts.floatW / 2, y: ts.floatY + ts.floatH / 2 };
+        }
 
-        // Apply rotation — returns expanded bounding box {pixels, w, h}
+        // Rotate (same-size output — no bbox expansion during live drag)
         const rotated = rotSprite(scaledPx, scaledW, scaledH, angleDeg);
 
-        // Update float to rotated result; re-center around pivot
-        ts.floatPixels = rotated.pixels;
-        ts.floatW      = rotated.w;
-        ts.floatH      = rotated.h;
-        ts.floatX      = pivX - rotated.w / 2;
-        ts.floatY      = pivY - rotated.h / 2;
+        // Place result centered on the fixed pivot; bbox stays scaledW × scaledH
+        ts.floatPixels = rotated;
+        ts.floatW      = scaledW;
+        ts.floatH      = scaledH;
+        ts.floatX      = ts._rotatePivot.x - scaledW / 2;
+        ts.floatY      = ts._rotatePivot.y - scaledH / 2;
+
+        _drawTransformUI();
+      }
+
+      // _finalizeRotationBbox: called ONCE on pointerup after a rotation drag.
+      // Expands floatW/H to the actual rotated bounding box (no clipping),
+      // repositions so _rotatePivot stays visually fixed.
+      function _finalizeRotationBbox() {
+        const ts = EditorState.transformState;
+        if (!ts || ts.angleDeg === 0) return;
+
+        if (ts.origBbox.w * ts.origBbox.h > 128 * 128) return;  // limit already shown
+
+        const srcPx = ts._baseFloatPixels;
+        const srcW  = ts._baseFloatW;
+        const srcH  = ts._baseFloatH;
+
+        let scaledPx = srcPx, scaledW = srcW, scaledH = srcH;
+        if (Math.abs(ts.scaleX - 1.0) > 0.001 || Math.abs(ts.scaleY - 1.0) > 0.001) {
+          scaledW = Math.max(1, Math.round(ts.origBbox.w * ts.scaleX));
+          scaledH = Math.max(1, Math.round(ts.origBbox.h * ts.scaleY));
+          scaledPx = scaleNearestNeighbor(srcPx, srcW, srcH, scaledW, scaledH);
+        }
+
+        const result = _rotSpriteExpanded(scaledPx, scaledW, scaledH, ts.angleDeg);
+
+        // Pivot guaranteed to exist (was set in rotation onDown)
+        const piv = ts._rotatePivot || { x: ts.floatX + ts.floatW / 2, y: ts.floatY + ts.floatH / 2 };
+        ts.floatPixels = result.pixels;
+        ts.floatW      = result.w;
+        ts.floatH      = result.h;
+        ts.floatX      = piv.x - result.w / 2;
+        ts.floatY      = piv.y - result.h / 2;
 
         _drawTransformUI();
       }
@@ -3373,11 +3454,16 @@
               existingTs._dragAnchorFracY = ay;
               return;
             } else if (hitResult !== null && hitResult.type === 'rotate') {
-              // Rotation via corner handle outer zone
+              // Rotation via corner handle outer zone.
+              // Lock _rotatePivot now — it must not change for the entire drag session.
+              const pivCanvasX = existingTs.floatX + existingTs.floatW / 2;
+              const pivCanvasY = existingTs.floatY + existingTs.floatH / 2;
+              existingTs._rotatePivot = { x: pivCanvasX, y: pivCanvasY };
+
               const pixRect = pixelCanvas.getBoundingClientRect();
               const ps = pixRect.width / EditorState.width;
-              const centerClientX = pixRect.left + (existingTs.floatX + existingTs.floatW / 2) * ps;
-              const centerClientY = pixRect.top  + (existingTs.floatY + existingTs.floatH / 2) * ps;
+              const centerClientX = pixRect.left + pivCanvasX * ps;
+              const centerClientY = pixRect.top  + pivCanvasY * ps;
 
               existingTs._dragMode         = 'rotate';
               existingTs._rotCenterX       = centerClientX;
@@ -3511,7 +3597,18 @@
         onUp(x, y, e) {
           const ts = EditorState.transformState;
           if (!ts) return;
+          const prevMode = ts._dragMode;
           ts._dragMode = null;
+
+          if (prevMode === 'rotate') {
+            // Expand bbox to contain all rotated pixels; pivot stays fixed.
+            _finalizeRotationBbox();
+            // Update pivot to new visual center so subsequent drags start correctly.
+            ts._rotatePivot = { x: ts.floatX + ts.floatW / 2, y: ts.floatY + ts.floatH / 2 };
+          } else if (prevMode === 'move') {
+            // After a move drag, update pivot so rotation stays centered on new position.
+            ts._rotatePivot = { x: ts.floatX + ts.floatW / 2, y: ts.floatY + ts.floatH / 2 };
+          }
           _updateDistanceLabel();
         },
         onCursor(x, y, e) {
