@@ -25,11 +25,19 @@ Alpha = 0 pixels may only be introduced through:
 
 No other operation may produce alpha = 0 pixels.
 
-### Palette Counting
+### Palette Counting and Alpha Handling
 
-- 色卡限制只处理 RGB 三个数值；色卡中的所有颜色均为实心色（alpha = 255），不存在带 Alpha 通道的颜色条目。
-- 透明像素（alpha = 0）及半透明像素（0 < alpha < 255）不计入色卡的颜色数量统计。
-- The palette contains only fully-opaque RGB colors.
+色卡只存储全不透明 RGB 颜色（alpha = 255），不存在带 Alpha 通道的颜色条目。
+像素按以下规则分类参与色卡生成与应用：
+
+| Alpha 值 | 色卡生成时 | 应用色卡时 |
+|---------|----------|----------|
+| alpha = 255（纯色） | 计入色卡 | 替换为最近色卡色（alpha = 255） |
+| 128 ≤ alpha < 255（不透明一侧） | 以当前 RGB 值计入色卡（视作不透明像素） | 替换为最近色卡色（alpha = 255） |
+| 1 ≤ alpha ≤ 127（透明一侧） | **不计入**色卡（忽略） | 替换为纯透明 (0, 0, 0, 0) |
+| alpha = 0（纯透明） | 不计入色卡 | 替换为纯透明 (0, 0, 0, 0) |
+
+**隐式透明槽**：在应用色卡时，alpha ≤ 127 的像素统一被一条隐式规则处理（输出为纯透明）。该规则不显示在 UI 的色卡条目中，但实际存在于应用逻辑中。不计入用户设置的颜色数上限。
 
 ## Phases
 
@@ -119,6 +127,23 @@ Plans:
 - [ ] 04-02-PLAN.md — PAL-02 发光高亮 + applyPalette 结果预览面板 + web_ui.html 色卡代码删除
 - [ ] 04-03-PLAN.md — 浏览器目视验证检查点（Phase 4 成功标准全部确认）
 
+### Phase 04.1: Phase 4 返工：透明像素判断修正 + 色卡直接应用到画布 (INSERTED)
+
+**Goal**: 修正色卡生成时对半透明像素的误计（导致出现虚假黑色等颜色）；将"应用色卡"改为直接写入画布并计入撤销历史，移除右侧非破坏性预览面板
+**Requirements**: PAL-03（alpha 分类规则）, PAL-04（破坏性应用 + undo）
+**Depends on:** Phase 4
+**Plans:** 2 plans
+
+**Success Criteria** (what must be TRUE):
+  1. 对含半透明像素的图片生成色卡，只有 alpha ≥ 128 的像素参与颜色统计；alpha ≤ 127 的像素不会产生任何色号条目
+  2. 点击"应用色卡"后，画布内容直接被替换（EditorState.pixels 更新，flushPixels 重绘）；alpha ≥ 128 的像素替换为最近色卡色（alpha=255），alpha ≤ 127 的像素替换为纯透明 (0,0,0,0)
+  3. 应用色卡操作可以通过 Cmd+Z 撤销，完全还原到应用前的像素状态
+  4. 右侧的非破坏性预览面板（原 palette-result-panel）已从 editor.html 移除
+
+Plans:
+- [ ] 04.1-01-PLAN.md — 修正 alpha 分类：色卡生成过滤 alpha ≤ 127 像素；应用色卡写入 EditorState.pixels + pushHistory
+- [ ] 04.1-02-PLAN.md — 移除 palette-result-panel + 验证检查点
+
 ### Phase 5: Selection Tools
 **Goal**: User can isolate a region of the canvas using Rectangle Marquee or Magic Wand, and drawing tools respect the selection boundary
 **Depends on**: Phase 3 (runs in parallel with Phase 4)
@@ -156,7 +181,7 @@ Plans:
   2. Switching to Canvas Size (S) mode shows four reference lines on the canvas that update in real time as the user types new Width, Height, or L/R/T/B values
   3. Clicking Apply in Canvas Size mode produces a new canvas with the correct dimensions; existing pixel content is shifted to the correct position
   4. Precision and scaled-up download buttons below the central canvas produce correct output files
-  5. After applying a palette in the editor, the palette mapping comparison image appears to the right of the canvas
+  5. After applying a palette in the editor, the canvas is updated in-place with the palette colors applied; the operation appears in undo history
 **Plans**: TBD
 
 ## Progress
@@ -170,7 +195,8 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 | 1. Foundation | 3/3 | Complete | 2026-03-02 |
 | 2. History | 2/2 | Complete | 2026-03-03 |
 | 3. Core Tools | 4/4 | Complete | 2026-03-03 |
-| 4. Palette Panel | 3/3 | Complete   | 2026-03-03 |
-| 5. Selection Tools | 3/4 | In Progress|  |
+| 4. Palette Panel | 3/3 | Complete | 2026-03-03 |
+| 4.1. Phase 4 返工 (INSERTED) | 1/2 | In Progress|  |
+| 5. Selection Tools | 3/4 | In Progress | - |
 | 6. Transform | 0/TBD | Not started | - |
 | 7. Integration | 0/TBD | Not started | - |

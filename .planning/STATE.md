@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T10:35:03.687Z"
+last_updated: "2026-03-03T13:02:29.238Z"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 3
-  total_plans: 16
-  completed_plans: 14
+  total_plans: 18
+  completed_plans: 15
 ---
 
 # Project State
@@ -59,8 +59,13 @@ Progress: [████████████] 56%
 | Phase 05-selection-tools P03 | 2 | 2 tasks | 1 files |
 | Phase 04-palette-panel P02 | 25 | 2 tasks | 2 files |
 | Phase 04-palette-panel P03 | 0 | 0 tasks | 0 files |
+| Phase 04.1-phase-4 P01 | 8 | 2 tasks | 1 files |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 04.1 inserted after Phase 4: Phase 4 返工 — 透明像素判断修正 + 色卡直接应用到画布 (URGENT)
 
 ### Decisions
 
@@ -102,8 +107,10 @@ Recent decisions affecting current work:
 - [Phase 05-02]: [05-02]: invertSelection with no selection selects all pixels (fill(1)); full-canvas invert clears selection
 - [Phase 05-selection-tools]: [05-03]: BFS traversal not restricted by selection mask — only setPixel write is guarded; traversal must remain unrestricted to reach pixels on far side of narrow selection
 - [Phase 05-selection-tools]: [05-03]: fillSelection enforces alpha=255 (fully opaque) as global tool output constraint; deleteSelection fills selected pixels with [0,0,0,0]
-- [Phase 04-palette-panel]: [04-02]: applyPalette 非破坏性预览，不修改 EditorState.pixels，不计入撤销历史
+- [Phase 04-palette-panel]: [04-02]: applyPalette 原为非破坏性预览 — **已废弃**；Phase 04.1 改为破坏性应用（直接写入 EditorState.pixels + pushHistory），移除 palette-result-panel
 - [Phase 04-palette-panel]: [04-02]: canvas-area 改为 flex-row，zoom-scroll-content 成为实际滚动容器
+- [Phase 04.1-phase-4]: PAL-03: Alpha normalization done in JS before encoding to avoid cv2.IMREAD_COLOR black-compositing bug
+- [Phase 04.1-phase-4]: PAL-04: applyPalette is now synchronous with save-before pushHistory — palette apply is fully undoable (Cmd+Z)
 
 ### Pending Todos
 
