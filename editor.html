@@ -830,19 +830,15 @@
 
     <!-- Right Panel (tool strip — disabled in Phase 1) -->
     <div id="right-panel">
-      <button class="tool-btn" data-tool="marquee" title="Marquee (M)">&#9645;</button>
-      <button class="tool-btn" data-tool="wand" title="Wand (W)">&#10022;</button>
-      <div class="tool-sep"></div>
-      <button class="tool-btn" data-tool="move" title="Move (V)">&#10021;</button>
-      <div class="tool-sep"></div>
-      <button class="tool-btn" data-tool="pencil" title="Pencil (B)">&#9998;</button>
-      <button class="tool-btn" data-tool="bucket" title="Bucket (G)">&#9776;</button>
-      <div class="tool-sep"></div>
-      <button class="tool-btn" data-tool="eraser" title="Eraser (E)">&#9633;</button>
-      <div class="tool-sep"></div>
-      <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)">&#128449;</button>
+      <button class="tool-btn" data-tool="marquee" title="Marquee (M)"><img src="/icons/Marquee_icon.png" width="22" height="22" alt="Marquee"></button>
+      <button class="tool-btn" data-tool="wand" title="Wand (W)"><img src="/icons/Wand_icon.png" width="22" height="22" alt="Wand"></button>
+      <button class="tool-btn" data-tool="move" title="Move (V)"><img src="/icons/Move_icon.png" width="22" height="22" alt="Move"></button>
+      <button class="tool-btn" data-tool="pencil" title="Pencil (B)"><img src="/icons/Pencil_icon.png" width="22" height="22" alt="Pencil"></button>
+      <button class="tool-btn" data-tool="bucket" title="Bucket (G)"><img src="/icons/Bucket_icon.png" width="22" height="22" alt="Bucket"></button>
+      <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><img src="/icons/Eraser_icon.png" width="22" height="22" alt="Eraser"></button>
+      <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)"><img src="/icons/Eyedropper_icon.png" width="22" height="22" alt="Eyedropper"></button>
       <div style="flex:1;"></div><!-- spacer pushes help button to bottom -->
-      <button class="tool-btn" id="help-btn" title="快捷键帮助 (?)">?</button>
+      <button class="tool-btn" id="help-btn" title="快捷键帮助 (?)"><img src="/icons/Help_icon.png" width="22" height="22" alt="Help"></button>
     </div>
 
   </div><!-- /#layout -->
@@ -3254,6 +3250,24 @@
               existingTs._dragStartScaleY  = existingTs.scaleY;
               existingTs._dragStartFloatX  = existingTs.floatX;
               existingTs._dragStartFloatY  = existingTs.floatY;
+              // B1 fix: record anchor point (opposite corner/edge stays fixed during resize)
+              // anchorFrac: fraction of the current bbox where the anchor sits
+              // [TL, TC, TR, ML, MR, BL, BC, BR] = indices 0-7
+              const anchorFrac = [
+                [1, 1],   // 0 TL → anchor at BR
+                [0.5, 1], // 1 TC → anchor at BC-center
+                [0, 1],   // 2 TR → anchor at BL
+                [1, 0.5], // 3 ML → anchor at MR-center
+                [0, 0.5], // 4 MR → anchor at ML-center
+                [1, 0],   // 5 BL → anchor at TR
+                [0.5, 0], // 6 BC → anchor at TC-center
+                [0, 0],   // 7 BR → anchor at TL
+              ];
+              const [ax, ay] = anchorFrac[handleIdx];
+              existingTs._dragAnchorX     = existingTs.floatX + ax * existingTs.floatW;
+              existingTs._dragAnchorY     = existingTs.floatY + ay * existingTs.floatH;
+              existingTs._dragAnchorFracX = ax;
+              existingTs._dragAnchorFracY = ay;
               return;
             }
             // No handle hit → treat as move drag
@@ -3345,6 +3359,11 @@
             ts.floatPixels = scaleNearestNeighbor(ts._origFloatPixels, ts._origFloatW, ts._origFloatH, newW, newH);
             ts.floatW = newW;
             ts.floatH = newH;
+            // B1 fix: re-anchor floatX/Y so the opposite handle stays stationary
+            if (ts._dragAnchorFracX !== undefined) {
+              ts.floatX = ts._dragAnchorX - ts._dragAnchorFracX * newW;
+              ts.floatY = ts._dragAnchorY - ts._dragAnchorFracY * newH;
+            }
 
             // Sync top-bar inputs
             const sxEl = document.getElementById('opt-scale-x');
@@ -3556,7 +3575,7 @@
           e.preventDefault();
           applyTransform();
         }
-        // Eyedropper cancel: Escape restores _prevTool
+        // Eyedropper cancel: Escape restores _prevTool (fall back to pencil if _prevTool was null)
         if (e.key === 'Escape' && EditorState.activeTool === 'eyedropper') {
           setActiveTool(EditorState._prevTool || 'pencil');
         }
@@ -3568,6 +3587,11 @@
         if (e.key === 'Escape' && EditorState.selectionMask && !EditorState.transformState && EditorState.activeTool !== 'eyedropper') {
           const modalOpen = document.getElementById('shortcut-modal')?.style.display === 'flex';
           if (!modalOpen) { e.preventDefault(); clearSelection(); }
+        }
+        // Escape → deactivate all tools (nothing else to cancel, modal closed)
+        if (e.key === 'Escape' && !EditorState.selectionMask && !EditorState.transformState && EditorState.activeTool !== 'eyedropper') {
+          const modalOpen = document.getElementById('shortcut-modal')?.style.display === 'flex';
+          if (!modalOpen) { e.preventDefault(); setActiveTool(null); }
         }
       });
 
@@ -3584,13 +3608,13 @@
           {
             title: '工具',
             rows: [
-              { desc: '选框（矩形）', keys: ['M'] },
-              { desc: '魔棒',         keys: ['W'] },
-              { desc: '移动',         keys: ['V'] },
-              { desc: '铅笔',         keys: ['B'] },
-              { desc: '油漆桶',       keys: ['G'] },
-              { desc: '橡皮擦',       keys: ['E'] },
-              { desc: '吸管（取色）', keys: ['I'] },
+              { desc: '选框（矩形）', keys: ['M'], icon: '/icons/Marquee_icon.png' },
+              { desc: '魔棒',         keys: ['W'], icon: '/icons/Wand_icon.png' },
+              { desc: '移动',         keys: ['V'], icon: '/icons/Move_icon.png' },
+              { desc: '铅笔',         keys: ['B'], icon: '/icons/Pencil_icon.png' },
+              { desc: '油漆桶',       keys: ['G'], icon: '/icons/Bucket_icon.png' },
+              { desc: '橡皮擦',       keys: ['E'], icon: '/icons/Eraser_icon.png' },
+              { desc: '吸管（取色）', keys: ['I'], icon: '/icons/Eyedropper_icon.png' },
               { desc: '取消',         keys: ['Esc'] },
             ],
           },
@@ -3633,7 +3657,14 @@
               rowEl.className = 'sc-row';
               const descEl = document.createElement('span');
               descEl.className = 'sc-desc';
-              descEl.textContent = row.desc;
+              if (row.icon) {
+                const iconEl = document.createElement('img');
+                iconEl.src = row.icon;
+                iconEl.width = 16; iconEl.height = 16;
+                iconEl.style.cssText = 'vertical-align:middle;margin-right:6px;opacity:0.75';
+                descEl.appendChild(iconEl);
+              }
+              descEl.appendChild(document.createTextNode(row.desc));
               const keysEl = document.createElement('span');
               keysEl.className = 'sc-keys';
               row.keys.forEach(k => {
