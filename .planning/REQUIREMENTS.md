@@ -38,7 +38,7 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 ### PAL — 色卡面板扩展
 
 - [x] **PAL-01**: 点击色卡色块时，自动同步该颜色至常驻调色盘
-- [ ] **PAL-02**: 调色盘当前颜色与色卡某色块匹配时，给该色块加高亮选框
+- [x] **PAL-02**: 调色盘当前颜色与色卡某色块匹配时，给该色块加高亮选框
 
 ### DRAW — 绘图工具
 
@@ -114,7 +114,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CLR-03 | Phase 3 | Complete |
 | CLR-04 | Phase 3 | Complete |
 | PAL-01 | Phase 4 | Complete |
-| PAL-02 | Phase 4 | Pending |
+| PAL-02 | Phase 4 | Complete |
 | DRAW-01 | Phase 3 | Complete |
 | DRAW-02 | Phase 3 | Complete |
 | DRAW-03 | Phase 3 | Complete |

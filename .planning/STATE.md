@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T10:29:08.609Z"
+last_updated: "2026-03-03T10:32:59.472Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 16
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State
@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 5 of 7 (Selection Tools) — IN PROGRESS
-Plan: 3/4 complete
-Status: Phase 5 Plan 03 done — Tool clipping + Delete/Option+Delete shortcuts complete; ready for 05-04
-Last activity: 2026-03-03 - Completed 05-03: isSelectedPixel guards in applyStamp/floodFill, deleteSelection, fillSelection, keyboard shortcuts
+Phase: 4 of 7 (Palette Panel) + Phase 5 (Selection Tools) running in parallel
+Plan: Phase 4 Plan 2/3 complete; Phase 5 Plan 3/4 complete
+Status: Phase 4 Plan 02 done — PAL-02 highlight + applyPalette + web_ui.html cleanup; Phase 5 Plan 03 done — Tool clipping; next: 04-03 (if planned) or 05-04
+Last activity: 2026-03-03 - Completed 04-02: highlightMatchingSwatches, applyPalette non-destructive preview, #palette-result-panel, web_ui.html color panel removed
 
 Progress: [████████████] 56%
 
@@ -57,6 +57,7 @@ Progress: [████████████] 56%
 | Phase 04-palette-panel P01 | 9 | 2 tasks | 1 files |
 | Phase 05-selection-tools P02 | 1 | 2 tasks | 1 files |
 | Phase 05-selection-tools P03 | 2 | 2 tasks | 1 files |
+| Phase 04-palette-panel P02 | 25 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,8 @@ Recent decisions affecting current work:
 - [Phase 05-02]: [05-02]: invertSelection with no selection selects all pixels (fill(1)); full-canvas invert clears selection
 - [Phase 05-selection-tools]: [05-03]: BFS traversal not restricted by selection mask — only setPixel write is guarded; traversal must remain unrestricted to reach pixels on far side of narrow selection
 - [Phase 05-selection-tools]: [05-03]: fillSelection enforces alpha=255 (fully opaque) as global tool output constraint; deleteSelection fills selected pixels with [0,0,0,0]
+- [Phase 04-palette-panel]: [04-02]: applyPalette 非破坏性预览，不修改 EditorState.pixels，不计入撤销历史
+- [Phase 04-palette-panel]: [04-02]: canvas-area 改为 flex-row，zoom-scroll-content 成为实际滚动容器
 
 ### Pending Todos
 
