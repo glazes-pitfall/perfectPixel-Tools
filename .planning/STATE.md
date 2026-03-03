@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T15:44:22.119Z"
+last_updated: "2026-03-03T16:52:38.354Z"
 progress:
   total_phases: 8
-  completed_phases: 4
-  total_plans: 20
-  completed_plans: 17
+  completed_phases: 6
+  total_plans: 21
+  completed_plans: 19
 ---
 
 # Project State
@@ -61,6 +61,7 @@ Progress: [████████████] 56%
 | Phase 04-palette-panel P03 | 0 | 0 tasks | 0 files |
 | Phase 04.1-phase-4 P01 | 8 | 2 tasks | 1 files |
 | Phase 04.2-palette-ui P01 | 12 | 1 tasks | 1 files |
+| Phase 05.1 P01 | 8 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -120,6 +121,8 @@ Recent decisions affecting current work:
 - [Phase 04.2-palette-ui]: [04.2-02]: refreshSavedDropdown empty-state branch also appends upload option — ensures upload always reachable via combobox dropdown
 - [Phase 04.2-palette-ui]: [04.2-02]: loadPaletteBtnEl logic moved into refreshSavedDropdown click handler (load-on-select); deletePaletteBtn not implemented (D4 decision)
 - [Phase 04.2-palette-ui]: [04.2-02]: dropdown toggle uses style.display (not classList.toggle('open')) — consistent with Plan 01 exportMenu HTML pattern
+- [Phase 05.1-01]: [05.1-01]: difference composite replaces dual white+black stroke — white XOR over any pixel color produces visible contrast on transparent selCanvas
+- [Phase 05.1-01]: [05.1-01]: clearRect in draw functions must use EditorState.width/height (logical) not selCanvas.width/height (physical) — selCtx already permanently DPR-scaled in initCanvases()
 
 ### Pending Todos
 
