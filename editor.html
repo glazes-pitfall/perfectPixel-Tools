@@ -2942,7 +2942,7 @@
           _baseFloatH:      bb.h,
           // _rotatePivot: visual center of float in canvas-pixel coords.
           // Set at rotation drag start; stays fixed for the entire rotation session.
-          _rotatePivot:     { x: bb.x + bb.w / 2, y: bb.y + bb.h / 2 },
+          _rotatePivot:     { x: Math.round(bb.x + bb.w / 2), y: Math.round(bb.y + bb.h / 2) },
           _dragMode:        null,
           _dragStartClientX: 0, _dragStartClientY: 0,
           _dragStartFloatX:  0, _dragStartFloatY:  0,
@@ -3126,8 +3126,12 @@
         // Subtract tiny epsilon before ceil to avoid fp noise (e.g. cos(90°) ≈ 6e-17 → adds
         // 1 spurious transparent pixel column at exact multiples of 90°).
         const EPS = 1e-9;
-        const outBw = Math.ceil(bw * absCos + bh * absSin - EPS);
-        const outBh = Math.ceil(bw * absSin + bh * absCos - EPS);
+        // outW/outH: final 1:1 pixel output size. Compute first so outBw = outW*8
+        // guarantees the downsample bounds check (sx < outBw) never clips valid pixels.
+        const outW = Math.ceil(w * absCos + h * absSin - EPS);
+        const outH = Math.ceil(w * absSin + h * absCos - EPS);
+        const outBw = outW * 8;
+        const outBh = outH * 8;
         const icx = bw / 2, icy = bh / 2;
         const ocx = outBw / 2, ocy = outBh / 2;
 
@@ -3145,8 +3149,6 @@
             }
           }
         }
-        const outW = Math.ceil(w * absCos + h * absSin - EPS);
-        const outH = Math.ceil(w * absSin + h * absCos - EPS);
         const out = new Uint8ClampedArray(outW * outH * 4);
         for (let oy = 0; oy < outH; oy++) {
           for (let ox = 0; ox < outW; ox++) {
@@ -3196,7 +3198,7 @@
 
         // Ensure pivot exists (fallback for Angle° input box without a drag start)
         if (!ts._rotatePivot) {
-          ts._rotatePivot = { x: ts.floatX + ts.floatW / 2, y: ts.floatY + ts.floatH / 2 };
+          ts._rotatePivot = { x: Math.round(ts.floatX + ts.floatW / 2), y: Math.round(ts.floatY + ts.floatH / 2) };
         }
 
         // Use expanded RotSprite so all rotated pixels are visible during drag
@@ -3206,11 +3208,11 @@
         ts.floatPixels = result.pixels;
         ts.floatW      = result.w;
         ts.floatH      = result.h;
-        ts.floatX      = ts._rotatePivot.x - result.w / 2;
-        ts.floatY      = ts._rotatePivot.y - result.h / 2;
+        ts.floatX      = Math.round(ts._rotatePivot.x - result.w / 2);
+        ts.floatY      = Math.round(ts._rotatePivot.y - result.h / 2);
         ts._borderRect = {
-          x: ts._rotatePivot.x - scaledW / 2,
-          y: ts._rotatePivot.y - scaledH / 2,
+          x: Math.round(ts._rotatePivot.x - scaledW / 2),
+          y: Math.round(ts._rotatePivot.y - scaledH / 2),
           w: scaledW,
           h: scaledH,
         };
@@ -3241,12 +3243,12 @@
         const result = _rotSpriteExpanded(scaledPx, scaledW, scaledH, ts.angleDeg);
 
         // Pivot guaranteed to exist (was set in rotation onDown)
-        const piv = ts._rotatePivot || { x: ts.floatX + ts.floatW / 2, y: ts.floatY + ts.floatH / 2 };
+        const piv = ts._rotatePivot || { x: Math.round(ts.floatX + ts.floatW / 2), y: Math.round(ts.floatY + ts.floatH / 2) };
         ts.floatPixels = result.pixels;
         ts.floatW      = result.w;
         ts.floatH      = result.h;
-        ts.floatX      = piv.x - result.w / 2;
-        ts.floatY      = piv.y - result.h / 2;
+        ts.floatX      = Math.round(piv.x - result.w / 2);
+        ts.floatY      = Math.round(piv.y - result.h / 2);
         ts._borderRect = null;  // expanded bbox is now the actual handle boundary
 
         _drawTransformUI();
@@ -3397,16 +3399,19 @@
         const label = document.getElementById('transform-distance-label');
         if (!label) return;
 
-        const left   = ts.floatX;
-        const top    = ts.floatY;
-        const right  = EditorState.width  - (ts.floatX + ts.floatW);
-        const bottom = EditorState.height - (ts.floatY + ts.floatH);
+        // During rotation drag _borderRect holds nominal (unscaled) position.
+        // Use it so the label shows integer canvas coords, not the expanded float bbox.
+        const br = ts._borderRect || { x: ts.floatX, y: ts.floatY, w: ts.floatW, h: ts.floatH };
+        const left   = br.x;
+        const top    = br.y;
+        const right  = EditorState.width  - (br.x + br.w);
+        const bottom = EditorState.height - (br.y + br.h);
         label.textContent = `\u2190${left} \u2191${top} \u2192${right} \u2193${bottom}`;
 
         const pixRect = pixelCanvas.getBoundingClientRect();
         const ps      = pixRect.width / EditorState.width;
-        const screenX = pixRect.left + ts.floatX * ps;
-        const screenY = pixRect.top  + (ts.floatY + ts.floatH) * ps + 6;
+        const screenX = pixRect.left + br.x * ps;
+        const screenY = pixRect.top  + (br.y + br.h) * ps + 6;
         label.style.left    = screenX + 'px';
         label.style.top     = screenY + 'px';
         label.style.display = 'block';
@@ -3518,8 +3523,8 @@
             } else if (hitResult !== null && hitResult.type === 'rotate') {
               // Rotation via corner handle outer zone.
               // Lock _rotatePivot now — it must not change for the entire drag session.
-              const pivCanvasX = existingTs.floatX + existingTs.floatW / 2;
-              const pivCanvasY = existingTs.floatY + existingTs.floatH / 2;
+              const pivCanvasX = Math.round(existingTs.floatX + existingTs.floatW / 2);
+              const pivCanvasY = Math.round(existingTs.floatY + existingTs.floatH / 2);
               existingTs._rotatePivot = { x: pivCanvasX, y: pivCanvasY };
 
               const pixRect = pixelCanvas.getBoundingClientRect();
@@ -3666,10 +3671,10 @@
             // Expand bbox to contain all rotated pixels; pivot stays fixed.
             _finalizeRotationBbox();
             // Update pivot to new visual center so subsequent drags start correctly.
-            ts._rotatePivot = { x: ts.floatX + ts.floatW / 2, y: ts.floatY + ts.floatH / 2 };
+            ts._rotatePivot = { x: Math.round(ts.floatX + ts.floatW / 2), y: Math.round(ts.floatY + ts.floatH / 2) };
           } else if (prevMode === 'move') {
             // After a move drag, update pivot so rotation stays centered on new position.
-            ts._rotatePivot = { x: ts.floatX + ts.floatW / 2, y: ts.floatY + ts.floatH / 2 };
+            ts._rotatePivot = { x: Math.round(ts.floatX + ts.floatW / 2), y: Math.round(ts.floatY + ts.floatH / 2) };
           }
           _updateDistanceLabel();
         },
