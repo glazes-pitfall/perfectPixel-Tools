@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T10:25:21.318Z"
+last_updated: "2026-03-03T10:29:08.609Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 16
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 5 of 7 (Selection Tools) — IN PROGRESS
-Plan: 2/4 complete
-Status: Phase 5 Plan 02 done — Magic Wand tool + invertSelection + keyboard shortcuts complete; ready for 05-03
-Last activity: 2026-03-03 - Completed 05-02: wandSelect BFS, tools.wand, invertSelection, Cmd+D, Shift+Cmd+I
+Plan: 3/4 complete
+Status: Phase 5 Plan 03 done — Tool clipping + Delete/Option+Delete shortcuts complete; ready for 05-04
+Last activity: 2026-03-03 - Completed 05-03: isSelectedPixel guards in applyStamp/floodFill, deleteSelection, fillSelection, keyboard shortcuts
 
 Progress: [████████████] 56%
 
@@ -56,6 +56,7 @@ Progress: [████████████] 56%
 | Phase 05-selection-tools P01 | 5 | 2 tasks | 1 files |
 | Phase 04-palette-panel P01 | 9 | 2 tasks | 1 files |
 | Phase 05-selection-tools P02 | 1 | 2 tasks | 1 files |
+| Phase 05-selection-tools P03 | 2 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,8 @@ Recent decisions affecting current work:
 - [04-01]: palShowStatus() logs to console.info — no status bar in editor.html Phase 4
 - [Phase 05-02]: [05-02]: wandSelect uses Uint8Array mask (x + y * W indexing) for O(1) rebuildAntsPath compatibility
 - [Phase 05-02]: [05-02]: invertSelection with no selection selects all pixels (fill(1)); full-canvas invert clears selection
+- [Phase 05-selection-tools]: [05-03]: BFS traversal not restricted by selection mask — only setPixel write is guarded; traversal must remain unrestricted to reach pixels on far side of narrow selection
+- [Phase 05-selection-tools]: [05-03]: fillSelection enforces alpha=255 (fully opaque) as global tool output constraint; deleteSelection fills selected pixels with [0,0,0,0]
 
 ### Pending Todos
 
@@ -118,6 +121,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 05-02-PLAN.md — Magic Wand tool + invertSelection complete
-Next: Phase 5 Plan 03 or 04 (if remaining) or Phase 6 Transform
+Stopped at: Completed 05-03-PLAN.md — tool clipping + Delete/Option+Delete shortcuts complete
+Next: Phase 5 Plan 04 (if remaining) or Phase 6 Transform
 Resume file: None
