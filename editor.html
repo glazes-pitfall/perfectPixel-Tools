@@ -828,6 +828,12 @@
           </div>
         </div>
       </div>
+
+      <!-- Download trigger button -->
+      <div style="padding:8px 12px; border-top:1px solid var(--border); display:flex; gap:8px; align-items:center;">
+        <button id="btn-download-open" class="btn btn-secondary"
+                style="flex:1; padding:6px 10px; font-size:13px;">⬇ 下载</button>
+      </div>
     </div>
 
     <!-- Canvas Area -->
@@ -2387,6 +2393,74 @@
           palShowStatus('色卡替换失败：' + err.message, 'error');
         }
       }
+    }
+
+    // ── 下载弹窗 ──────────────────────────────────────────────────────────────
+    let _lastBlobUrl = null;  // 维护以便在下次下载/关闭弹窗时 revoke
+
+    function triggerDownload(scale) {
+      if (!EditorState.pixels || !EditorState.width) return;
+      const newW = EditorState.width  * scale;
+      const newH = EditorState.height * scale;
+
+      // Build source canvas from EditorState.pixels (bypass premultiplied alpha)
+      const src = document.createElement('canvas');
+      src.width = EditorState.width; src.height = EditorState.height;
+      src.getContext('2d').putImageData(
+        new ImageData(EditorState.pixels.slice(), EditorState.width, EditorState.height), 0, 0
+      );
+
+      // Integer-scale (nearest-neighbor — keeps pixel art crisp)
+      const off = document.createElement('canvas');
+      off.width = newW; off.height = newH;
+      const dctx = off.getContext('2d');
+      dctx.imageSmoothingEnabled = false;
+      dctx.drawImage(src, 0, 0, newW, newH);
+
+      off.toBlob(blob => {
+        // Revoke old Blob URL
+        if (_lastBlobUrl) { URL.revokeObjectURL(_lastBlobUrl); _lastBlobUrl = null; }
+
+        const blobUrl = URL.createObjectURL(blob);
+        _lastBlobUrl = blobUrl;
+
+        // Show preview
+        const previewImg = document.getElementById('dl-preview-img');
+        previewImg.src = blobUrl;
+        previewImg.style.width  = '';
+        previewImg.style.height = '';
+        document.getElementById('dl-size-info').textContent = `${newW} × ${newH} px`;
+        document.getElementById('dl-preview').style.display = 'block';
+
+        // Trigger download
+        const baseName = (EditorState.filename || '').replace(/\.[^.]+$/, '') || 'output';
+        const filename = `${baseName}_pixelated_${scale}x.png`;
+        const a = document.createElement('a');
+        a.href = blobUrl; a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        // Do NOT immediately revoke: user may right-click preview to save-as
+      }, 'image/png');
+    }
+
+    function goHome() {
+      if (EditorState.pixels) {
+        if (!confirm('将丢失当前进度，是否继续？')) return;
+      }
+      window.location.href = '/';
+    }
+
+    function openDownloadModal() {
+      document.getElementById('dl-preview').style.display = 'none';
+      document.getElementById('dl-scale-slider').value = 1;
+      document.getElementById('dl-scale-num').value = 1;
+      const modal = document.getElementById('download-modal');
+      modal.style.display = 'flex';
+    }
+
+    function closeDownloadModal() {
+      document.getElementById('download-modal').style.display = 'none';
+      // Revoke blob URL on close (preview no longer needed)
+      if (_lastBlobUrl) { URL.revokeObjectURL(_lastBlobUrl); _lastBlobUrl = null; }
     }
 
     // ── DOM ready ─────────────────────────────────────────────────────────────
@@ -4024,6 +4098,32 @@
       document.getElementById('btn-cfg-apply').addEventListener('click', applyCanvasSize);
       document.getElementById('btn-cfg-cancel').addEventListener('click', cancelCanvasSize);
 
+      // ── 下载弹窗事件绑定 ───────────────────────────────────────────────────────
+      document.getElementById('btn-download-open').addEventListener('click', openDownloadModal);
+      document.getElementById('dl-btn-cancel').addEventListener('click', closeDownloadModal);
+      document.getElementById('dl-btn-home').addEventListener('click', () => {
+        closeDownloadModal();
+        goHome();
+      });
+      document.getElementById('dl-btn-download').addEventListener('click', () => {
+        const scale = Math.max(1, Math.min(100, parseInt(document.getElementById('dl-scale-num').value) || 1));
+        triggerDownload(scale);
+      });
+
+      // Slider and number input sync
+      const dlSlider = document.getElementById('dl-scale-slider');
+      const dlNum    = document.getElementById('dl-scale-num');
+      dlSlider.addEventListener('input', () => { dlNum.value = dlSlider.value; });
+      dlNum.addEventListener('input', () => {
+        const v = Math.max(1, Math.min(100, parseInt(dlNum.value) || 1));
+        dlSlider.value = v;
+      });
+
+      // Click overlay background to close modal
+      document.getElementById('download-modal').addEventListener('click', e => {
+        if (e.target === document.getElementById('download-modal')) closeDownloadModal();
+      });
+
       // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
       // canvasArea: receives wheel events (entire area incl. result panel)
       // zoomScrollEl: actual scroll container for canvas pan/zoom
@@ -4506,5 +4606,44 @@
 
     });
   </script>
+
+<!-- ── 下载弹窗 ─────────────────────────────────────────────────────────── -->
+<div id="download-modal" style="display:none; position:fixed; inset:0; z-index:1000;
+     background:rgba(0,0,0,.65); align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px;
+              padding:24px; width:360px; max-width:90vw; display:flex; flex-direction:column; gap:16px;
+              box-shadow:0 8px 32px rgba(0,0,0,.4);">
+    <div style="font-weight:700; font-size:15px; color:var(--text);">下载图片</div>
+
+    <!-- Scale slider -->
+    <div style="display:flex; align-items:center; gap:8px;">
+      <label style="font-size:12px; color:var(--text-muted); white-space:nowrap;">放大倍数</label>
+      <input type="range" id="dl-scale-slider" min="1" max="100" value="1"
+             style="flex:1; accent-color:var(--accent);">
+      <input type="number" id="dl-scale-num" min="1" max="100" value="1"
+             style="width:48px; padding:2px 4px; background:var(--surface2); border:1px solid var(--border);
+                    border-radius:3px; color:var(--text); font-size:12px; text-align:center;">
+      <span style="font-size:12px; color:var(--text-muted);">×</span>
+    </div>
+
+    <!-- Preview area (shown after download) -->
+    <div id="dl-preview" style="display:none; text-align:center; background:var(--surface2);
+         border-radius:4px; padding:12px; min-height:60px;">
+      <img id="dl-preview-img" style="max-width:100%; max-height:240px; image-rendering:pixelated;
+           border-radius:4px; display:block; margin:0 auto;">
+      <div id="dl-size-info" style="font-size:11px; color:var(--text-muted); margin-top:6px;"></div>
+    </div>
+
+    <!-- Action buttons: Home left, Cancel + Download right -->
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button id="dl-btn-home" class="btn btn-ghost" title="返回 web_ui.html"
+              style="padding:6px 12px; font-size:13px;">🏠 返回主页</button>
+      <span style="flex:1;"></span>
+      <button id="dl-btn-cancel" class="btn btn-ghost" style="padding:6px 12px; font-size:13px;">取消</button>
+      <button id="dl-btn-download" class="btn btn-primary"
+              style="font-size:14px; padding:10px 20px; font-weight:700;">⬇ 下载</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
