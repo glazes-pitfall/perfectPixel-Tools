@@ -456,14 +456,147 @@
     <!-- Left Panel -->
     <div id="left-panel">
 
-      <!-- Scrollable area: color card scaffold -->
+      <!-- Scrollable area: palette panel (ported from web_ui.html) -->
       <div id="left-scroll">
-        <div class="panel-card">
-          <div class="panel-header" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center; padding:8px; border-bottom:1px solid var(--border)">
-            <span style="font-weight:600; font-size:13px;">色卡限制</span>
-            <span style="font-size:11px; color:var(--text-muted)">[Phase 4]</span>
+
+        <!-- ── 色卡限制 (Palette Restriction) Panel ── -->
+        <div class="palette-section" id="paletteSection">
+          <div class="palette-header" id="paletteHeader">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="title">色卡限制</span>
+              <label class="toggle-switch" onclick="event.stopPropagation()">
+                <input type="checkbox" id="paletteEnabled">
+                <div class="toggle-track"></div>
+              </label>
+            </div>
+            <span class="chevron">▼</span>
           </div>
-        </div>
+
+          <div class="palette-body hidden" id="paletteBody">
+
+            <!-- Tabs: generate / upload -->
+            <div class="tabs">
+              <button class="tab-btn active" data-tab="generate">自动生成</button>
+              <button class="tab-btn" data-tab="upload">上传色卡</button>
+            </div>
+
+            <!-- Tab: auto generate -->
+            <div class="tab-pane active" id="tab-generate">
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div class="control-group">
+                  <label>颜色数量</label>
+                  <div class="slider-row">
+                    <input type="range" id="nColors" min="2" max="64" step="1" value="16">
+                    <input type="number" id="nColorsInput" class="n-colors-input" value="16" min="1">
+                  </div>
+                </div>
+                <div class="control-group">
+                  <label>生成算法</label>
+                  <select id="genAlgorithm" style="padding:4px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
+                    <option value="fastoctree">快速八叉树（默认，速度最快）</option>
+                    <option value="mediancut">中值切割（均衡分配色彩空间）</option>
+                    <option value="boost">覆盖增强（智能识别小色块区域）★</option>
+                  </select>
+                </div>
+                <div id="boostParams" class="control-group" style="display:none;">
+                  <label>噪点过滤阈值</label>
+                  <div class="slider-row">
+                    <input type="range" id="minRegionPct" min="0.01" max="5" step="0.01" value="1.0">
+                    <input type="number" id="minRegionPctInput" class="n-colors-input" value="1.0" min="0.01" max="100" step="0.01">
+                  </div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">仅保留面积 ≥ X% 的连通色块区域</div>
+                </div>
+                <button class="btn btn-secondary" id="generateBtn" style="width:100%;">生成色卡</button>
+              </div>
+            </div>
+
+            <!-- Tab: upload palette -->
+            <div class="tab-pane" id="tab-upload">
+              <div class="pal-upload-zone" id="palUploadZone">
+                <input type="file" id="palFileInput" accept=".act,.gpl,.pal,.png">
+                <div>上传 .act .gpl .pal .png</div>
+                <div id="palFilename" style="margin-top:4px;font-size:11px;color:var(--accent);"></div>
+              </div>
+            </div>
+
+            <!-- Current palette swatches -->
+            <div>
+              <div class="swatches-label">
+                <span class="section-label" style="margin:0;">当前色卡</span>
+                <span class="swatches-count" id="swatchCount">0 色</span>
+              </div>
+              <div class="swatches-outer">
+                <div class="swatches-grid" id="swatchesGrid">
+                  <span class="swatches-empty">色卡为空</span>
+                </div>
+              </div>
+              <button class="btn btn-ghost" id="addColorBtn" style="margin-top:6px;width:100%;">+ 添加颜色</button>
+            </div>
+
+            <!-- Save / load -->
+            <div>
+              <div class="section-label">保存 / 加载</div>
+              <div class="save-row">
+                <input type="text" id="paletteName" placeholder="色卡名称...">
+                <button class="btn btn-secondary" id="savePaletteBtn" style="flex-shrink:0;">保存</button>
+              </div>
+              <!-- Custom dropdown replaces <select> -->
+              <div class="custom-select" id="savedPalettesDropdown" style="margin-top:6px;">
+                <div class="custom-select-trigger" id="savedPaletteTrigger">
+                  <span id="savedPaletteTriggerText">— 选择已保存色卡 —</span>
+                  <span class="caret">▼</span>
+                </div>
+                <div class="custom-select-options" id="savedPaletteOptions"></div>
+              </div>
+              <div style="display:flex;gap:6px;margin-top:6px;">
+                <button class="btn btn-secondary" id="loadPaletteBtn" style="flex:1;font-size:12px;">加载</button>
+                <button class="btn btn-secondary" id="deletePaletteBtn" style="flex:1;font-size:12px;color:var(--error);">删除</button>
+              </div>
+            </div>
+
+            <!-- Export -->
+            <div>
+              <div class="section-label">导出</div>
+              <div class="export-row">
+                <button class="btn btn-ghost" id="exportAct">.act</button>
+                <button class="btn btn-ghost" id="exportGpl">.gpl</button>
+                <button class="btn btn-ghost" id="exportPal">.pal</button>
+              </div>
+            </div>
+
+            <!-- Mapping mode -->
+            <div>
+              <div class="section-label">映射模式</div>
+              <div class="mode-group">
+                <label class="mode-option">
+                  <input type="radio" name="mappingMode" value="vector" checked>
+                  <div>
+                    <div class="mode-label">向量匹配</div>
+                    <div class="mode-desc">RGB 欧氏距离，最直接</div>
+                  </div>
+                </label>
+                <label class="mode-option" id="modeSwapOption">
+                  <input type="radio" name="mappingMode" value="swap">
+                  <div>
+                    <div class="mode-label">色卡替换</div>
+                    <div class="mode-desc">先量化图像生成中间调色板，防止相近色扎堆映射</div>
+                  </div>
+                </label>
+                <label class="mode-option">
+                  <input type="radio" name="mappingMode" value="perceptual">
+                  <div>
+                    <div class="mode-label">感知匹配</div>
+                    <div class="mode-desc">LAB 色彩空间，更符合人眼感知</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" id="applyPaletteBtn" disabled>应用色卡</button>
+
+          </div><!-- /palette-body -->
+        </div><!-- /palette-section -->
+
       </div>
 
       <!-- Color Picker Panel (permanent, between scroll area and pixel inspector) -->
@@ -541,6 +674,24 @@
 
   </div><!-- /#layout -->
 
+  <!-- Color editor popup (position:fixed; z-index:999 — above all canvas layers) -->
+  <div class="color-popup" id="colorPopup" style="display:none;">
+    <div class="popup-title">编辑颜色</div>
+    <input type="color" id="popupColorPicker">
+    <div class="rgb-row">
+      <label>R</label><input type="number" id="popupR" min="0" max="255">
+      <label>G</label><input type="number" id="popupG" min="0" max="255">
+      <label>B</label><input type="number" id="popupB" min="0" max="255">
+    </div>
+    <div class="hex-row">
+      <label>#</label><input type="text" id="popupHex" maxlength="6" placeholder="RRGGBB">
+    </div>
+    <div class="popup-actions">
+      <button class="btn btn-primary" id="popupDone" style="flex:1;">完成</button>
+      <button class="btn btn-secondary" id="popupDelete" style="flex:1;color:var(--error);">删除</button>
+    </div>
+  </div>
+
   <script>
     // ── Color Utilities (HSL <-> RGB, no external library) ────────────────────
     function hslToRgb(h, s, l) {
@@ -563,6 +714,17 @@
       else if (max === g) h = ((b - r) / d + 2) / 6;
       else h = ((r - g) / d + 4) / 6;
       return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+    }
+
+    // ── Hex <-> RGB utilities (used by palette panel) ─────────────────────────
+    function rgbToHex(r, g, b) {
+      return [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+    }
+    function hexToRgb(hex) {
+      hex = hex.replace('#', '');
+      if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+      const n = parseInt(hex, 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
     }
 
     // ── Color Picker State ────────────────────────────────────────────────────
@@ -729,6 +891,12 @@
       },
     };
 
+    // ── Palette Panel State ───────────────────────────────────────────────────
+    let currentPalette     = [];   // [[r,g,b], ...]
+    let editingSwatchIdx   = null;
+    let selectedPaletteKey = '';
+    let currentPaletteMeta = { name: '', source: 'upload', algorithm: '', count: 0 };
+
     // ── Tool activation ───────────────────────────────────────────────────────
     function setActiveTool(name) {
       // EyeDropper API: if browser supports it, open OS-level color picker.
@@ -770,6 +938,16 @@
       });
       const activePanel = document.getElementById('tool-settings-' + name);
       if (activePanel) activePanel.style.display = 'flex';
+      // Cursor style follows active tool
+      if (cursorCanvas) {
+        if (name === 'marquee' || name === 'wand' || name === 'eyedropper') {
+          cursorCanvas.style.cursor = 'crosshair';
+        } else if (name === 'pencil' || name === 'eraser' || name === 'bucket') {
+          cursorCanvas.style.cursor = 'none';  // custom cursor drawn on canvas
+        } else {
+          cursorCanvas.style.cursor = 'default';
+        }
+      }
     }
 
     // ── Canvas context refs (set by initCanvases, used by all tools) ─────────
@@ -1678,6 +1856,94 @@
         onCursor(x, y) {
           // 仅保留画布上的十字光标预览，颜色反馈交给底部像素检查器
           clearCursorPreview();
+        },
+      };
+
+      // ── Rectangle Marquee tool implementation ────────────────────────────────
+
+      let _marqueeStartX = null, _marqueeStartY = null;
+      let _marqueeCurrentX = null, _marqueeCurrentY = null;
+
+      function _marqueeGetSnappedRect(ax, ay, bx, by) {
+        const gW = EditorState.gridW || 1;
+        const gH = EditorState.gridH || 1;
+        const x0 = snapToGrid(ax, gW), y0 = snapToGrid(ay, gH);
+        const x1 = snapToGrid(bx, gW), y1 = snapToGrid(by, gH);
+        return {
+          rx: Math.min(x0, x1), ry: Math.min(y0, y1),
+          rw: Math.abs(x1 - x0), rh: Math.abs(y1 - y0)
+        };
+      }
+
+      function _marqueeDrawPreview(rx, ry, rw, rh) {
+        const dpr = window.devicePixelRatio || 1;
+        selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+        selCtx.save();
+        selCtx.scale(dpr, dpr);
+        selCtx.lineWidth = 1;
+        selCtx.setLineDash([4, 4]);
+        selCtx.strokeStyle = '#ffffff';
+        selCtx.lineDashOffset = 0;
+        selCtx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);
+        selCtx.strokeStyle = '#000000';
+        selCtx.lineDashOffset = 4;
+        selCtx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);
+        selCtx.restore();
+      }
+
+      tools.marquee = {
+        onDown(x, y, e) {
+          // Clear existing selection unless Shift (Shift-union appends)
+          if (!e.shiftKey) {
+            // Cancel existing ants but don't call clearSelection — we'll set a new one on up
+            if (antsRafId) { cancelAnimationFrame(antsRafId); antsRafId = null; }
+            selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+          }
+          _marqueeStartX = x; _marqueeStartY = y;
+          _marqueeCurrentX = x; _marqueeCurrentY = y;
+        },
+        onMove(x, y) {
+          if (_marqueeStartX === null) return;
+          _marqueeCurrentX = x; _marqueeCurrentY = y;
+          const { rx, ry, rw, rh } = _marqueeGetSnappedRect(
+            _marqueeStartX, _marqueeStartY, x, y
+          );
+          if (rw > 0 && rh > 0) _marqueeDrawPreview(rx, ry, rw, rh);
+        },
+        onUp(x, y, e) {
+          if (_marqueeStartX === null) return;
+          const { rx, ry, rw, rh } = _marqueeGetSnappedRect(
+            _marqueeStartX, _marqueeStartY, x, y
+          );
+          _marqueeStartX = null; _marqueeCurrentX = null;
+
+          if (rw === 0 || rh === 0) {
+            // Zero-size selection: deselect (a click with no drag)
+            clearSelection();
+            return;
+          }
+
+          // Build mask for snapped rectangle
+          const W = EditorState.width, H = EditorState.height;
+          const newMask = new Uint8Array(W * H);
+          for (let py = ry; py < ry + rh; py++) {
+            for (let px = rx; px < rx + rw; px++) {
+              if (px >= 0 && px < W && py >= 0 && py < H) {
+                newMask[px + py * W] = 1;
+              }
+            }
+          }
+
+          // Shift: union with existing mask; no Shift: replace
+          const finalMask = e.shiftKey
+            ? unionMasks(EditorState.selectionMask, newMask, W * H)
+            : newMask;
+          const bbox = computeBoundingBox(finalMask, W, H);
+          if (bbox) setSelection(finalMask, bbox);
+        },
+        onCursor(x, y) {
+          cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+          // CSS cursor:crosshair handles visual feedback; no canvas drawing needed here
         },
       };
 
