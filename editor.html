@@ -1860,17 +1860,31 @@
      * This is the only place getImageData is called — all subsequent reads
      * go through EditorState.pixels (avoids premultiplied alpha corruption).
      */
-    async function loadImageFromB64(b64) {
-      const blob   = await (await fetch('data:image/png;base64,' + b64)).blob();
-      const bitmap = await createImageBitmap(blob);
-      const { width, height } = bitmap;
-      initCanvases(width, height);
-      pixelCtx.drawImage(bitmap, 0, 0);
-      const imageData = pixelCtx.getImageData(0, 0, width, height);
-      EditorState.pixels = imageData.data.slice();
-      clearSelection();
-      flushPixels();
-      bitmap.close();
+    /**
+     * Load image from a base64 string (PNG) or full data URL (any format).
+     * Accepts: pure base64 PNG string OR full data:image/xxx;base64,... URL.
+     */
+    async function loadImageFromB64(b64OrDataUrl) {
+      // Build full data URL if only the base64 payload was provided
+      const src = b64OrDataUrl.startsWith('data:')
+        ? b64OrDataUrl
+        : 'data:image/png;base64,' + b64OrDataUrl;
+      // Use Image element (more broadly compatible than createImageBitmap for all PNG/JPEG variants)
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const { naturalWidth: width, naturalHeight: height } = img;
+          initCanvases(width, height);
+          pixelCtx.drawImage(img, 0, 0);
+          const imageData = pixelCtx.getImageData(0, 0, width, height);
+          EditorState.pixels = imageData.data.slice();
+          clearSelection();
+          flushPixels();
+          resolve();
+        };
+        img.onerror = () => reject(new Error('Image decode failed'));
+        img.src = src;
+      });
     }
 
     /**
@@ -1905,9 +1919,9 @@
       EditorState.filename = file.name;
       const reader = new FileReader();
       reader.onload = async e => {
-        const b64 = e.target.result.replace(/^data:image\/\w+;base64,/, '');
+        // Pass full data URL (preserves original MIME type for JPEG/WEBP support)
         document.getElementById('drop-zone')?.remove();
-        await loadImageFromB64(b64);
+        await loadImageFromB64(e.target.result);
         pushHistory();
         bindPostLoadEvents();
       };
