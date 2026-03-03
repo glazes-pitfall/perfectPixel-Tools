@@ -263,6 +263,7 @@
       flex: 1;
       padding: 0 8px;
       border: none;
+      border-radius: 0;
       background: var(--surface2);
       color: var(--text);
       font-size: 13px;
@@ -286,6 +287,7 @@
     }
     .combobox-drop-btn:hover { background: var(--surface3, #555); }
     .combobox-row .btn {
+      border: none;
       border-left: 1px solid var(--border);
       border-radius: 0;
       width: 28px;
@@ -1173,19 +1175,14 @@
 
     function drawAnts() {
       if (!EditorState.selectionMask || !_antsPath) { antsRafId = null; return; }
-      const dpr = window.devicePixelRatio || 1;
-      selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
-      selCtx.save();
-      selCtx.scale(dpr, dpr);
+      selCtx.clearRect(0, 0, EditorState.width, EditorState.height);
       selCtx.lineWidth = 1;
       selCtx.setLineDash([4, 4]);
+      selCtx.globalCompositeOperation = 'difference';
       selCtx.strokeStyle = '#ffffff';
       selCtx.lineDashOffset = antsDashOffset;
       selCtx.stroke(_antsPath);
-      selCtx.strokeStyle = '#000000';
-      selCtx.lineDashOffset = antsDashOffset + 4;
-      selCtx.stroke(_antsPath);
-      selCtx.restore();
+      selCtx.globalCompositeOperation = 'source-over';
       antsDashOffset = (antsDashOffset - 1 + 8) % 8;
       antsRafId = requestAnimationFrame(drawAnts);
     }
