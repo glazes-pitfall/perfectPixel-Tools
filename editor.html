@@ -564,6 +564,34 @@
               </div>
             </div>
 
+            <!-- Mapping mode -->
+            <div>
+              <div class="section-label">映射模式</div>
+              <div class="mode-group">
+                <label class="mode-option">
+                  <input type="radio" name="mappingMode" value="vector" checked>
+                  <div>
+                    <div class="mode-label">向量匹配</div>
+                    <div class="mode-desc">RGB 欧氏距离，最直接</div>
+                  </div>
+                </label>
+                <label class="mode-option">
+                  <input type="radio" name="mappingMode" value="perceptual">
+                  <div>
+                    <div class="mode-label">感知匹配</div>
+                    <div class="mode-desc">LAB 色彩空间，更符合人眼感知</div>
+                  </div>
+                </label>
+                <label class="mode-option">
+                  <input type="radio" name="mappingMode" value="swap">
+                  <div>
+                    <div class="mode-label">色卡替换</div>
+                    <div class="mode-desc">先量化图像生成中间调色板，防止相近色扎堆映射</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
             <!-- Export -->
             <div>
               <div class="section-label">导出</div>
@@ -1816,25 +1844,132 @@
       return palette[bestIdx];  // [r, g, b]
     }
 
-    // ── PAL-04: 破坏性应用色卡 — 直接写入 EditorState.pixels + pushHistory ──
-    function applyPalette() {
+    // ── PAL-LAB: sRGB → CIE LAB 转换辅助函数 ─────────────────────────────
+    function rgbToLab(r, g, b) {
+      // sRGB → linear
+      let R = r / 255, G = g / 255, B = b / 255;
+      R = R > 0.04045 ? Math.pow((R + 0.055) / 1.055, 2.4) : R / 12.92;
+      G = G > 0.04045 ? Math.pow((G + 0.055) / 1.055, 2.4) : G / 12.92;
+      B = B > 0.04045 ? Math.pow((B + 0.055) / 1.055, 2.4) : B / 12.92;
+      // linear → XYZ (D65)
+      const X = (R * 0.4124564 + G * 0.3575761 + B * 0.1804375) / 0.95047;
+      const Y = (R * 0.2126729 + G * 0.7151522 + B * 0.0721750) / 1.00000;
+      const Z = (R * 0.0193339 + G * 0.1191920 + B * 0.9503041) / 1.08883;
+      // XYZ → LAB
+      const f = t => t > 0.008856 ? Math.cbrt(t) : (7.787 * t + 16 / 116);
+      const L = 116 * f(Y) - 16;
+      const A = 500 * (f(X) - f(Y));
+      const Bv = 200 * (f(Y) - f(Z));
+      return [L, A, Bv];
+    }
+
+    // ── PAL-LAB: 最近色卡色匹配（CIE LAB 欧氏距离）─────────────────────
+    function nearestPaletteColorLab(r, g, b, palette) {
+      const [L1, A1, B1] = rgbToLab(r, g, b);
+      let bestIdx = 0, bestDist = Infinity;
+      for (let i = 0; i < palette.length; i++) {
+        const [L2, A2, B2] = rgbToLab(palette[i][0], palette[i][1], palette[i][2]);
+        const dL = L1 - L2, dA = A1 - A2, dB = B1 - B2;
+        const dist = dL*dL + dA*dA + dB*dB;
+        if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+      }
+      return palette[bestIdx];  // [r, g, b]
+    }
+
+    // ── PAL-04: 破坏性应用色卡 — 三模式（vector / perceptual / swap）────────
+    async function applyPalette() {
       if (!EditorState.pixels || currentPalette.length === 0) return;
+      const mode = (document.querySelector('input[name="mappingMode"]:checked') || {value: 'vector'}).value;
       const px = EditorState.pixels;
       const pal = currentPalette;
-      for (let i = 0; i < px.length; i += 4) {
-        const a = px[i + 3];
-        if (a <= 127) {
-          // 透明一侧 → 纯透明
-          px[i] = 0; px[i+1] = 0; px[i+2] = 0; px[i+3] = 0;
-        } else {
-          // 不透明一侧 → 最近色卡色，alpha 强制 255
-          const [nr, ng, nb] = nearestPaletteColor(px[i], px[i+1], px[i+2], pal);
-          px[i] = nr; px[i+1] = ng; px[i+2] = nb; px[i+3] = 255;
+
+      if (mode === 'vector') {
+        // 现有 RGB 欧氏距离实现（不变）
+        for (let i = 0; i < px.length; i += 4) {
+          if (px[i + 3] <= 127) {
+            px[i] = 0; px[i+1] = 0; px[i+2] = 0; px[i+3] = 0;
+          } else {
+            const [nr, ng, nb] = nearestPaletteColor(px[i], px[i+1], px[i+2], pal);
+            px[i] = nr; px[i+1] = ng; px[i+2] = nb; px[i+3] = 255;
+          }
+        }
+        flushPixels();
+        pushHistory();
+        palShowStatus('色卡已应用（向量匹配）', 'success');
+
+      } else if (mode === 'perceptual') {
+        // LAB 距离 — 纯 JS，无 Flask 调用
+        for (let i = 0; i < px.length; i += 4) {
+          if (px[i + 3] <= 127) {
+            px[i] = 0; px[i+1] = 0; px[i+2] = 0; px[i+3] = 0;
+          } else {
+            const [nr, ng, nb] = nearestPaletteColorLab(px[i], px[i+1], px[i+2], pal);
+            px[i] = nr; px[i+1] = ng; px[i+2] = nb; px[i+3] = 255;
+          }
+        }
+        flushPixels();
+        pushHistory();
+        palShowStatus('色卡已应用（感知匹配）', 'success');
+
+      } else {
+        // swap 模式：调 Flask /api/apply-palette?mode=swap
+        // JS 侧 alpha 过滤：只发送不透明像素（与 generateBtn 相同方案）
+        palShowStatus('正在处理（色卡替换）…', 'info');
+        try {
+          // 1. 将当前像素写入 offscreen canvas，导出 PNG base64（alpha 通道完整保留）
+          const offscreen = document.createElement('canvas');
+          offscreen.width = EditorState.width;
+          offscreen.height = EditorState.height;
+          const offCtx = offscreen.getContext('2d', { alpha: true });
+          offCtx.putImageData(new ImageData(px.slice(), EditorState.width, EditorState.height), 0, 0);
+          const imageB64 = offscreen.toDataURL('image/png').split(',')[1];
+
+          // 2. 记录原始 alpha 掩码，用于事后恢复透明像素
+          const origAlpha = new Uint8Array(EditorState.width * EditorState.height);
+          for (let i = 0; i < px.length; i += 4) {
+            origAlpha[i >> 2] = px[i + 3];
+          }
+
+          // 3. 调用 Flask（发送完整 RGBA PNG，Flask 内部 b64_to_rgb 会合成黑色背景，但
+          //    swap 量化只关心颜色分布而非 alpha，结果 RGB 由 JS 恢复 alpha 覆盖）
+          const fd = new FormData();
+          fd.append('image', imageB64);
+          fd.append('palette', JSON.stringify(pal));
+          fd.append('mode', 'swap');
+          const resp = await fetch('/api/apply-palette', { method: 'POST', body: fd });
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const data = await resp.json();
+          if (data.error) throw new Error(data.error);
+
+          // 4. 解码返回的 RGB 图像
+          const img = new Image();
+          await new Promise((resolve, reject) => {
+            img.onload = resolve; img.onerror = reject;
+            img.src = 'data:image/png;base64,' + data.output;
+          });
+          const resultCanvas = document.createElement('canvas');
+          resultCanvas.width = EditorState.width;
+          resultCanvas.height = EditorState.height;
+          const rCtx = resultCanvas.getContext('2d', { willReadFrequently: true });
+          rCtx.drawImage(img, 0, 0);
+          const resultData = rCtx.getImageData(0, 0, EditorState.width, EditorState.height).data;
+
+          // 5. 写回 EditorState.pixels，保留原透明像素
+          for (let i = 0; i < px.length; i += 4) {
+            const a = origAlpha[i >> 2];
+            if (a <= 127) {
+              px[i] = 0; px[i+1] = 0; px[i+2] = 0; px[i+3] = 0;
+            } else {
+              px[i] = resultData[i]; px[i+1] = resultData[i+1]; px[i+2] = resultData[i+2]; px[i+3] = 255;
+            }
+          }
+          flushPixels();
+          pushHistory();
+          palShowStatus('色卡已应用（色卡替换）', 'success');
+        } catch (err) {
+          palShowStatus('色卡替换失败：' + err.message, 'error');
         }
       }
-      flushPixels();
-      pushHistory();  // save-after: 应用后压入，保证与铅笔各占独立 undo 步骤
-      palShowStatus('色卡已应用', 'success');
     }
 
     // ── DOM ready ─────────────────────────────────────────────────────────────
