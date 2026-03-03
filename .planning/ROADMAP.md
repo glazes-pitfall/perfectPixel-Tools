@@ -206,7 +206,12 @@ Plans:
   2. Eight transform handles appear around the active selection; dragging a handle scales the selection contents; X scale, Y scale, and a lock-aspect checkbox are editable in the top bar
   3. Rotating a selection using RotSprite produces pixel-art-quality results (no anti-aliasing artifacts); the rotation angle is editable in the top bar
   4. Pressing Enter applies a pending transform; pressing ESC cancels it and restores the original pixels; Apply and Cancel buttons are visible in the top bar during any active transform
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Move(V) 工具浮动模型 + transformState 基础设施 + 距离标注 CSS overlay + Apply/Cancel
+- [ ] 06-02-PLAN.md — 8-handle 缩放系统（nearest-neighbor）+ 顶栏 X%/Y%/Lock 输入绑定
+- [ ] 06-03-PLAN.md — RotSprite 算法（scale2x×3 + 最近邻旋转 + 下采样）+ Angle° 输入 + 目视验证检查点
 
 **Selection border implementation reference (from Phase 5.1 + Quick tasks 8–11):**
 
