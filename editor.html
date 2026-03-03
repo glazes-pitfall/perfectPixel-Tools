@@ -2321,7 +2321,7 @@
       cursorCanvas.addEventListener('pointermove', e => {
         if (!EditorState.pixels) return;
         const [cx, cy] = viewportToCanvas(e.clientX, e.clientY);
-        tools[EditorState.activeTool]?.onCursor(cx, cy);
+        tools[EditorState.activeTool]?.onCursor(cx, cy, e);
         if (isDrawing) tools[EditorState.activeTool]?.onMove(cx, cy, e);
       });
       cursorCanvas.addEventListener('pointerup', e => {
@@ -2821,8 +2821,9 @@
         if (!ts) return;
         e.preventDefault();
 
-        const handleIdx = hitTestHandle(e.clientX, e.clientY);
-        if (handleIdx !== null) {
+        const hitResult = hitTestHandle(e.clientX, e.clientY);
+        if (hitResult !== null && hitResult.type === 'scale') {
+          const handleIdx = hitResult.handleIdx;
           // Handle hit — set up handle drag state (mirrors tools.move.onDown handle branch)
           ts._origFloatPixels  = ts.floatPixels.slice();
           ts._origFloatW       = ts.floatW;
@@ -2840,6 +2841,9 @@
           ts._dragAnchorY     = ts.floatY + ay * ts.floatH;
           ts._dragAnchorFracX = ax;
           ts._dragAnchorFracY = ay;
+        } else if (hitResult !== null && hitResult.type === 'rotate') {
+          // Rotate via corner handle outer zone (Task 2 — delegate to tools.move.onDown)
+          tools.move.onDown(0, 0, e);
         } else {
           // No handle — start move drag
           ts._dragMode         = 'move';
@@ -3120,7 +3124,10 @@
         _drawTransformUI();
       }
 
-      // ── Plan 06-02: hitTestHandle ─────────────────────────────────────────────
+      // ── Plan 06-02/06-05: hitTestHandle ──────────────────────────────────────
+      // Returns {type: 'scale'|'rotate', handleIdx: number} | null
+      // Scale zone: ±6px from handle center (inner box)
+      // Rotate zone: 6~20px from handle center, corners only (outer ring)
       function hitTestHandle(clientX, clientY) {
         if (!EditorState.transformState) return null;
         const ts = EditorState.transformState;
@@ -3137,7 +3144,11 @@
         const sy = originY + ts.floatY * ps;
         const sw = ts.floatW * ps;
         const sh = ts.floatH * ps;
-        const HALF = 6;  // slightly larger hit zone than visual (12px) for usability
+
+        const INNER = 6;   // scale zone: ±6px from handle center
+        const OUTER = 20;  // rotate zone: 6~20px from handle center (corners only)
+
+        const cornerIndices = [0, 2, 5, 7]; // TL TR BL BR
 
         const handlePositions = [
           [sx,        sy       ],  // 0 TL
@@ -3151,7 +3162,15 @@
         ];
         for (let i = 0; i < handlePositions.length; i++) {
           const [hx, hy] = handlePositions[i];
-          if (Math.abs(lx - hx) <= HALF && Math.abs(ly - hy) <= HALF) return i;
+          const dx = Math.abs(lx - hx);
+          const dy = Math.abs(ly - hy);
+          if (dx <= INNER && dy <= INNER) {
+            return { type: 'scale', handleIdx: i };
+          }
+          // Rotation zone: only for corner handles, in the outer ring
+          if (cornerIndices.includes(i) && dx <= OUTER && dy <= OUTER) {
+            return { type: 'rotate', handleIdx: i };
+          }
         }
         return null;
       }
@@ -3303,8 +3322,9 @@
           // Case 1: transform already active → check handle hit-test first
           const existingTs = EditorState.transformState;
           if (existingTs) {
-            const handleIdx = hitTestHandle(e.clientX, e.clientY);
-            if (handleIdx !== null) {
+            const hitResult = hitTestHandle(e.clientX, e.clientY);
+            if (hitResult !== null && hitResult.type === 'scale') {
+              const handleIdx = hitResult.handleIdx;
               // Store original floatPixels for scale operations (source of truth)
               existingTs._origFloatPixels  = existingTs.floatPixels.slice();
               existingTs._origFloatW       = existingTs.floatW;
@@ -3334,6 +3354,19 @@
               existingTs._dragAnchorY     = existingTs.floatY + ay * existingTs.floatH;
               existingTs._dragAnchorFracX = ax;
               existingTs._dragAnchorFracY = ay;
+              return;
+            } else if (hitResult !== null && hitResult.type === 'rotate') {
+              // Rotation via corner handle outer zone
+              const pixRect = pixelCanvas.getBoundingClientRect();
+              const ps = pixRect.width / EditorState.width;
+              const centerClientX = pixRect.left + (existingTs.floatX + existingTs.floatW / 2) * ps;
+              const centerClientY = pixRect.top  + (existingTs.floatY + existingTs.floatH / 2) * ps;
+
+              existingTs._dragMode         = 'rotate';
+              existingTs._rotCenterX       = centerClientX;
+              existingTs._rotCenterY       = centerClientY;
+              existingTs._rotRefAngle      = Math.atan2(e.clientY - centerClientY, e.clientX - centerClientX);
+              existingTs._rotStartAngleDeg = existingTs.angleDeg;
               return;
             }
             // No handle hit → treat as move drag
@@ -3440,6 +3473,23 @@
             _drawTransformUI();
             return;
           }
+
+          if (ts._dragMode === 'rotate') {
+            const curAngle = Math.atan2(
+              e.clientY - ts._rotCenterY,
+              e.clientX - ts._rotCenterX
+            );
+            const deltaDeg = (curAngle - ts._rotRefAngle) * 180 / Math.PI;
+            ts.angleDeg = ts._rotStartAngleDeg + deltaDeg;
+
+            // Sync Angle° input
+            const aEl = document.getElementById('opt-rotate-angle');
+            if (aEl) aEl.value = Math.round(ts.angleDeg);
+
+            // Live RotSprite preview (128×128 limit check is inside _applyRotationPreview)
+            _applyRotationPreview();
+            return;
+          }
         },
         onUp(x, y, e) {
           const ts = EditorState.transformState;
@@ -3447,8 +3497,24 @@
           ts._dragMode = null;
           _updateDistanceLabel();
         },
-        onCursor(x, y) {
-          // Move cursor handled by CSS 'move' in setActiveTool
+        onCursor(x, y, e) {
+          if (!EditorState.transformState || !e) return;
+          const hit = hitTestHandle(e.clientX, e.clientY);
+          if (!hit) {
+            cursorCanvas.style.cursor = 'move';
+            return;
+          }
+          if (hit.type === 'rotate') {
+            cursorCanvas.style.cursor = 'crosshair';
+            return;
+          }
+          // Scale cursor: direction depends on handle index
+          const scaleCursors = [
+            'nw-resize', 'n-resize', 'ne-resize',
+            'w-resize',              'e-resize',
+            'sw-resize', 's-resize', 'se-resize',
+          ];
+          cursorCanvas.style.cursor = scaleCursors[hit.handleIdx] ?? 'move';
         },
       };
 
