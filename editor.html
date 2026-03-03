@@ -637,6 +637,19 @@
     <div id="tool-settings-marquee" style="display:none; align-items:center; gap:8px;">
       <span style="font-size:12px; color:var(--text-muted);">Grid-snapped selection</span>
     </div>
+    <div id="tool-settings-move" style="display:none; align-items:center; gap:8px;">
+      <span style="font-size:12px; color:var(--text-muted);">X%</span>
+      <input id="opt-scale-x" type="number" min="1" max="1600" value="100" style="width:56px; padding:3px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
+      <span style="font-size:12px; color:var(--text-muted);">Y%</span>
+      <input id="opt-scale-y" type="number" min="1" max="1600" value="100" style="width:56px; padding:3px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
+      <label style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:4px; cursor:pointer;">
+        <input id="opt-scale-lock" type="checkbox" checked>Lock
+      </label>
+      <span style="font-size:12px; color:var(--text-muted);">Angle°</span>
+      <input id="opt-rotate-angle" type="number" min="-180" max="180" value="0" style="width:56px; padding:3px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
+      <button class="btn btn-primary" id="btn-apply-transform" style="padding:4px 10px; font-size:12px;">Apply ✓</button>
+      <button class="btn btn-ghost"   id="btn-cancel-transform" style="padding:4px 10px; font-size:12px;">Cancel ✕</button>
+    </div>
     <button class="btn btn-ghost" id="btn-deselect" style="display:none" title="Deselect (Cmd+D)">Deselect</button>
     <button class="btn btn-ghost" id="btn-inverse"  style="display:none" title="Inverse (Shift+Cmd+I)">Inverse</button>
     <span style="flex:1"></span>
@@ -820,7 +833,7 @@
       <button class="tool-btn" data-tool="marquee" title="Marquee (M)">&#9645;</button>
       <button class="tool-btn" data-tool="wand" title="Wand (W)">&#10022;</button>
       <div class="tool-sep"></div>
-      <button class="tool-btn" disabled title="Move (V)">&#10021;</button>
+      <button class="tool-btn" data-tool="move" title="Move (V)">&#10021;</button>
       <div class="tool-sep"></div>
       <button class="tool-btn" data-tool="pencil" title="Pencil (B)">&#9998;</button>
       <button class="tool-btn" data-tool="bucket" title="Bucket (G)">&#9776;</button>
@@ -867,6 +880,13 @@
       <button class="btn btn-secondary" id="popupDelete" style="flex:1;color:var(--error);">删除</button>
     </div>
   </div>
+
+  <div id="transform-distance-label" style="
+    position:fixed; display:none; pointer-events:none; z-index:1000;
+    font-size:11px; font-family:monospace; color:#e0e0e0;
+    background:rgba(0,0,0,0.65); padding:2px 6px; border-radius:4px;
+    white-space:nowrap;
+  "></div>
 
   <script>
     // ── Color Utilities (HSL <-> RGB, no external library) ────────────────────
@@ -1126,7 +1146,7 @@
       });
       // Show/hide tool settings panels
       const panelIds = ['tool-settings-pencil', 'tool-settings-eraser', 'tool-settings-bucket',
-                        'tool-settings-marquee', 'tool-settings-wand'];
+                        'tool-settings-marquee', 'tool-settings-wand', 'tool-settings-move'];
       panelIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
@@ -1139,6 +1159,8 @@
           cursorCanvas.style.cursor = 'crosshair';
         } else if (name === 'pencil' || name === 'eraser' || name === 'bucket') {
           cursorCanvas.style.cursor = 'none';  // custom cursor drawn on canvas
+        } else if (name === 'move') {
+          cursorCanvas.style.cursor = 'move';
         } else {
           cursorCanvas.style.cursor = 'default';
         }
@@ -2770,6 +2792,250 @@
         },
       };
 
+      // ── Transform: helper functions ───────────────────────────────────────────
+
+      function _getSelCanvasCoords() {
+        const caRect  = document.getElementById('canvas-area').getBoundingClientRect();
+        const pixRect = pixelCanvas.getBoundingClientRect();
+        return {
+          originX: pixRect.left - caRect.left,
+          originY: pixRect.top  - caRect.top,
+          ps:      pixRect.width / EditorState.width,
+        };
+      }
+
+      function activateTransform() {
+        if (!EditorState.selectionMask || !EditorState.selection) return;
+        if (EditorState.transformState) return;  // already active
+
+        const bb   = EditorState.selection;
+        const W    = EditorState.width;
+        const mask = EditorState.selectionMask;
+
+        // 1. Snapshot originalPixels BEFORE any pixel writes (critical for ESC restore)
+        const originalPixels = EditorState.pixels.slice();
+
+        // 2. Extract float pixels from selection bounding box
+        const floatPx = new Uint8ClampedArray(bb.w * bb.h * 4);
+        for (let fy = 0; fy < bb.h; fy++) {
+          for (let fx = 0; fx < bb.w; fx++) {
+            const cx = bb.x + fx, cy = bb.y + fy;
+            if (mask[cx + cy * W]) {
+              const srcI = (cy * W + cx) * 4;
+              const dstI = (fy * bb.w + fx) * 4;
+              floatPx[dstI]   = EditorState.pixels[srcI];
+              floatPx[dstI+1] = EditorState.pixels[srcI+1];
+              floatPx[dstI+2] = EditorState.pixels[srcI+2];
+              floatPx[dstI+3] = EditorState.pixels[srcI+3];
+            }
+          }
+        }
+
+        // 3. Erase selected pixels from canvas (alpha=0) — AFTER snapshot
+        for (let i = 0; i < mask.length; i++) {
+          if (mask[i]) {
+            const px = i % W, py = (i / W) | 0;
+            setPixel(px, py, [0, 0, 0, 0]);
+          }
+        }
+        flushPixels();
+
+        // 4. Stop ants animation
+        if (antsRafId) { cancelAnimationFrame(antsRafId); antsRafId = null; }
+
+        // 5. Initialize transformState
+        EditorState.transformState = {
+          originalPixels,
+          floatPixels:      floatPx,
+          floatW:           bb.w,
+          floatH:           bb.h,
+          floatX:           bb.x,
+          floatY:           bb.y,
+          scaleX:           1.0,
+          scaleY:           1.0,
+          angleDeg:         0,
+          origBbox:         { ...bb },
+          _dragMode:        null,
+          _dragStartClientX: 0, _dragStartClientY: 0,
+          _dragStartFloatX:  0, _dragStartFloatY:  0,
+        };
+
+        // 6. Draw static transform UI + show top-bar
+        _drawTransformUI();
+        _showTransformTopBar();
+      }
+
+      function _drawTransformUI() {
+        if (!EditorState.transformState) return;
+        const ts  = EditorState.transformState;
+        const dpr = window.devicePixelRatio || 1;
+        selCtx.clearRect(0, 0, selCanvas.width / dpr, selCanvas.height / dpr);
+
+        const { originX, originY, ps } = _getSelCanvasCoords();
+        const sx = originX + ts.floatX * ps;
+        const sy = originY + ts.floatY * ps;
+        const sw = ts.floatW * ps;
+        const sh = ts.floatH * ps;
+
+        // Render float content preview (offscreen canvas → drawImage, safe: source is EditorState pixels)
+        if (ts.floatW > 0 && ts.floatH > 0) {
+          const off = document.createElement('canvas');
+          off.width = ts.floatW; off.height = ts.floatH;
+          const offCtx = off.getContext('2d');
+          offCtx.putImageData(new ImageData(ts.floatPixels.slice(), ts.floatW, ts.floatH), 0, 0);
+          selCtx.imageSmoothingEnabled = false;
+          selCtx.drawImage(off, sx, sy, sw, sh);
+        }
+
+        // Static dashed border (lineWidth=2, gray-purple, matching Phase 5.1 convention)
+        selCtx.strokeStyle = 'rgba(160,150,220,0.9)';
+        selCtx.lineWidth   = 2;
+        selCtx.setLineDash([4, 3]);
+        selCtx.beginPath();
+        selCtx.strokeRect(sx - 1, sy - 1, sw + 2, sh + 2);
+        selCtx.setLineDash([]);
+      }
+
+      function _showTransformTopBar() {
+        const panel = document.getElementById('tool-settings-move');
+        if (panel) panel.style.display = 'flex';
+        // Sync top-bar inputs to current transformState
+        const ts = EditorState.transformState;
+        if (!ts) return;
+        const sxEl = document.getElementById('opt-scale-x');
+        const syEl = document.getElementById('opt-scale-y');
+        const aEl  = document.getElementById('opt-rotate-angle');
+        if (sxEl) sxEl.value = Math.round(ts.scaleX * 100);
+        if (syEl) syEl.value = Math.round(ts.scaleY * 100);
+        if (aEl)  aEl.value  = ts.angleDeg;
+      }
+
+      function _hideTransformTopBar() {
+        const panel = document.getElementById('tool-settings-move');
+        if (panel) panel.style.display = 'none';
+      }
+
+      function _hideDistanceLabel() {
+        const label = document.getElementById('transform-distance-label');
+        if (label) label.style.display = 'none';
+      }
+
+      function _updateDistanceLabel() {
+        const ts = EditorState.transformState;
+        if (!ts) return;
+        const label = document.getElementById('transform-distance-label');
+        if (!label) return;
+
+        const left   = ts.floatX;
+        const top    = ts.floatY;
+        const right  = EditorState.width  - (ts.floatX + ts.floatW);
+        const bottom = EditorState.height - (ts.floatY + ts.floatH);
+        label.textContent = `\u2190${left} \u2191${top} \u2192${right} \u2193${bottom}`;
+
+        const pixRect = pixelCanvas.getBoundingClientRect();
+        const ps      = pixRect.width / EditorState.width;
+        const screenX = pixRect.left + ts.floatX * ps;
+        const screenY = pixRect.top  + (ts.floatY + ts.floatH) * ps + 6;
+        label.style.left    = screenX + 'px';
+        label.style.top     = screenY + 'px';
+        label.style.display = 'block';
+      }
+
+      function applyTransform() {
+        const ts = EditorState.transformState;
+        if (!ts) return;
+        pushHistory();  // one undo step for the entire compound transform
+
+        const W = EditorState.width, H = EditorState.height;
+        for (let fy = 0; fy < ts.floatH; fy++) {
+          for (let fx = 0; fx < ts.floatW; fx++) {
+            const cx = ts.floatX + fx, cy = ts.floatY + fy;
+            if (cx < 0 || cx >= W || cy < 0 || cy >= H) continue;  // clip overflow
+            const si = (fy * ts.floatW + fx) * 4;
+            if (ts.floatPixels[si + 3] === 0) continue;  // transparent → skip
+            setPixel(cx, cy, [
+              ts.floatPixels[si], ts.floatPixels[si+1],
+              ts.floatPixels[si+2], ts.floatPixels[si+3],
+            ]);
+          }
+        }
+        flushPixels();
+        EditorState.transformState = null;
+        clearSelection();
+        _hideTransformTopBar();
+        _hideDistanceLabel();
+      }
+
+      function cancelTransform() {
+        const ts = EditorState.transformState;
+        if (!ts) return;
+        // Restore original pixels (no history push)
+        EditorState.pixels = ts.originalPixels;
+        flushPixels();
+        EditorState.transformState = null;
+        clearSelection();
+        _hideTransformTopBar();
+        _hideDistanceLabel();
+      }
+
+      // ── tools.move ────────────────────────────────────────────────────────────
+
+      tools.move = {
+        onDown(x, y, e) {
+          if (!EditorState.selection) return;  // no selection → no-op
+          const ts = EditorState.transformState;
+          if (!ts) {
+            activateTransform();
+            // After activation, start drag immediately
+            if (EditorState.transformState) {
+              EditorState.transformState._dragMode = 'move';
+              EditorState.transformState._dragStartClientX = e.clientX;
+              EditorState.transformState._dragStartClientY = e.clientY;
+              EditorState.transformState._dragStartFloatX  = EditorState.transformState.floatX;
+              EditorState.transformState._dragStartFloatY  = EditorState.transformState.floatY;
+            }
+          } else {
+            // Already in transform mode: start a move drag
+            ts._dragMode = 'move';
+            ts._dragStartClientX = e.clientX;
+            ts._dragStartClientY = e.clientY;
+            ts._dragStartFloatX  = ts.floatX;
+            ts._dragStartFloatY  = ts.floatY;
+          }
+        },
+        onMove(x, y, e) {
+          const ts = EditorState.transformState;
+          if (!ts || ts._dragMode !== 'move') return;
+
+          const pixRect = pixelCanvas.getBoundingClientRect();
+          const ps      = pixRect.width / EditorState.width;
+
+          const dx = Math.round((e.clientX - ts._dragStartClientX) / ps);
+          const dy = Math.round((e.clientY - ts._dragStartClientY) / ps);
+
+          ts.floatX = ts._dragStartFloatX + dx;
+          ts.floatY = ts._dragStartFloatY + dy;
+
+          _drawTransformUI();
+          _updateDistanceLabel();
+        },
+        onUp(x, y, e) {
+          const ts = EditorState.transformState;
+          if (!ts) return;
+          ts._dragMode = null;
+          _updateDistanceLabel();
+        },
+        onCursor(x, y) {
+          // Move cursor handled by CSS 'move' in setActiveTool
+        },
+      };
+
+      // Apply/Cancel button bindings
+      const btnApplyTransform  = document.getElementById('btn-apply-transform');
+      const btnCancelTransform = document.getElementById('btn-cancel-transform');
+      if (btnApplyTransform)  btnApplyTransform.addEventListener('click', applyTransform);
+      if (btnCancelTransform) btnCancelTransform.addEventListener('click', cancelTransform);
+
       // ── END Tool dispatch ─────────────────────────────────────────────────────
 
       // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
@@ -2882,62 +3148,67 @@
           if (e.key === 'i' || e.key === 'I') setActiveTool('eyedropper');
           if (e.key === 'm' || e.key === 'M') setActiveTool('marquee');
           if (e.key === 'w' || e.key === 'W') setActiveTool('wand');
+          if (e.key === 'v' || e.key === 'V') setActiveTool('move');
+        }
+        // Enter → apply transform (if active)
+        if (e.key === 'Enter' && EditorState.transformState) {
+          e.preventDefault();
+          applyTransform();
         }
         // Eyedropper cancel: Escape restores _prevTool
         if (e.key === 'Escape' && EditorState.activeTool === 'eyedropper') {
           setActiveTool(EditorState._prevTool || 'pencil');
         }
+        // Escape → cancel transform (if active, and not eyedropper)
+        if (e.key === 'Escape' && EditorState.transformState && EditorState.activeTool !== 'eyedropper') {
+          cancelTransform();
+        }
       });
 
       // ── Keyboard shortcut help modal ────────────────────────────────────────
       (function() {
-        // Platform detection: macOS uses Cmd/Option; others use Ctrl/Alt
+        // Platform detection: macOS uses symbols; others use text labels
         const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-        const mod = isMac ? 'Cmd' : 'Ctrl';
-        const alt = isMac ? 'Option' : 'Alt';
-        const del = isMac ? 'Delete' : 'Delete';
+        const mod   = isMac ? '⌘' : 'Ctrl';
+        const alt   = isMac ? '⌥' : 'Alt';
+        const shift = isMac ? '⇧' : 'Shift';
 
         // Shortcut data grouped by section
         const SECTIONS = [
           {
             title: '工具',
             rows: [
-              { desc: '铅笔',       keys: ['B'] },
-              { desc: '橡皮擦',     keys: ['E'] },
-              { desc: '油漆桶',     keys: ['G'] },
+              { desc: '铅笔',         keys: ['B'] },
+              { desc: '橡皮擦',       keys: ['E'] },
+              { desc: '油漆桶',       keys: ['G'] },
               { desc: '选框（矩形）', keys: ['M'] },
-              { desc: '魔棒',       keys: ['W'] },
+              { desc: '魔棒',         keys: ['W'] },
+              { desc: '移动',         keys: ['V'] },
               { desc: '吸管（取色）', keys: ['I'] },
-              { desc: '取消吸管',   keys: ['Esc'] },
+              { desc: '取消吸管',     keys: ['Esc'] },
             ],
           },
           {
             title: '历史',
             rows: [
-              { desc: '撤销',       keys: [mod, 'Z'] },
-              { desc: '重做',       keys: [mod, '⇧Z'] },
+              { desc: '撤销', keys: [mod, 'Z'] },
+              { desc: '重做', keys: [mod, shift, 'Z'] },
             ],
           },
           {
             title: '视图',
             rows: [
-              { desc: '放大',       keys: [mod, '+'] },
-              { desc: '缩小',       keys: [mod, '−'] },
+              { desc: '放大', keys: [mod, '+'] },
+              { desc: '缩小', keys: [mod, '−'] },
             ],
           },
           {
             title: '选区',
             rows: [
-              { desc: '取消选区',        keys: [mod, 'D'] },
-              { desc: '反选',            keys: [mod, '⇧I'] },
-              { desc: '删除选区内像素',  keys: [del] },
-              { desc: '用前景色填充选区', keys: [alt, del] },
-            ],
-          },
-          {
-            title: '其他',
-            rows: [
-              { desc: '帮助', keys: ['?'] },
+              { desc: '取消选区',         keys: [mod, 'D'] },
+              { desc: '反选',             keys: [mod, shift, 'I'] },
+              { desc: '删除选区内像素',   keys: ['Delete', '/', 'Backspace'] },
+              { desc: '用前景色填充选区', keys: [alt, 'Delete', '/', alt, 'Backspace'] },
             ],
           },
         ];
@@ -2960,10 +3231,17 @@
               const keysEl = document.createElement('span');
               keysEl.className = 'sc-keys';
               row.keys.forEach(k => {
-                const keyEl = document.createElement('kbd');
-                keyEl.className = 'sc-key';
-                keyEl.textContent = k;
-                keysEl.appendChild(keyEl);
+                if (k === '/') {
+                  const sep = document.createElement('span');
+                  sep.textContent = '/';
+                  sep.style.cssText = 'color:var(--text-muted);align-self:center;padding:0 2px';
+                  keysEl.appendChild(sep);
+                } else {
+                  const keyEl = document.createElement('kbd');
+                  keyEl.className = 'sc-key';
+                  keyEl.textContent = k;
+                  keysEl.appendChild(keyEl);
+                }
               });
               rowEl.appendChild(descEl);
               rowEl.appendChild(keysEl);
