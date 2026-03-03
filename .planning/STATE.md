@@ -144,6 +144,7 @@ None yet.
 | 6 | fix-selection-visual-remove-dashes-corne | 2026-03-03 | eb2675d | [6-fix-selection-visual-remove-dashes-corne](./quick/6-fix-selection-visual-remove-dashes-corne/) |
 | 7 | palette-panel-ui-refinements | 2026-03-03 | c2d521d | [7-palette-panel-ui-refinements](./quick/7-palette-panel-ui-refinements/) |
 | 8 | selection-border-visual-redesign-inverse | 2026-03-04 | 8e5d242 | [8-selection-border-visual-redesign-inverse](./quick/8-selection-border-visual-redesign-inverse/) |
+| 9 | selection-outer-border-2px-screen-jagged | 2026-03-04 | ce577a8 | [9-selection-outer-border-2px-screen-jagged](./quick/9-selection-outer-border-2px-screen-jagged/) |
 
 ### Blockers/Concerns
 
@@ -154,6 +155,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed quick-8 selection-border-visual-redesign-inverse — inverse-color drag preview + flashing white bounding-box outline
+Stopped at: Completed quick-9 selection-outer-border-2px-screen-jagged — SEL_PAD canvas overflow + drawAnts pixel-outline jagged border
 Next: Phase 5 (Selection Tools) 或 Phase 6 (Transform)
 Resume file: None
