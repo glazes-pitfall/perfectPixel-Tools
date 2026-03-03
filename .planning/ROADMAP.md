@@ -52,7 +52,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Core Tools** - Pencil, Eraser, Paint Bucket tools with integrated color picker
 - [x] **Phase 4: Palette Panel** ⟋ **(parallel with Phase 5)** - Palette swatch integration with bidirectional color picker sync (completed 2026-03-03)
 - [x] **Phase 5: Selection Tools** ⟋ **(parallel with Phase 4)** - Rectangle Marquee and Magic Wand with animated marching ants (completed 2026-03-04)
-- [ ] **Phase 6: Transform** - Move, 8-handle scale, and RotSprite rotation on selections
+- [x] **Phase 6: Transform** - Move, 8-handle scale, and RotSprite rotation on selections (completed 2026-03-03)
 - [ ] **Phase 7: Integration** - Canvas Size tool, Open-in-Editor entry point, and download/save wiring
 
 ## Phase Details
@@ -264,5 +264,5 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 | 4.2. 色卡面板 UI 整理 (INSERTED) | 1/2 | Complete    | 2026-03-03 |
 | 5. Selection Tools | 4/4 | Complete | 2026-03-04 |
 | 5.1. Selection Visual Polish (INSERTED) | 1/1 | Complete | 2026-03-04 |
-| 6. Transform | 2/3 | In Progress|  |
+| 6. Transform | 3/3 | Complete   | 2026-03-03 |
 | 7. Integration | 0/TBD | Not started | - |
