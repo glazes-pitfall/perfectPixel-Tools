@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T19:19:08.864Z"
+last_updated: "2026-03-03T07:58:00.000Z"
 progress:
-  total_phases: 3
-  completed_phases: 2
-  total_plans: 9
-  completed_plans: 8
+  total_phases: 7
+  completed_phases: 3
+  total_plans: 16
+  completed_plans: 9
 ---
 
 # Project State
@@ -22,12 +22,12 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: 3 of 7 (Core Tools) — IN PROGRESS
-Plan: 3/4 complete
-Status: Phase 3 Plan 03 done — Permanent color picker panel (HSL wheel + hex/RGB + eyedropper) complete; ready for 03-04
-Last activity: 2026-03-03 - Completed 03-03: color picker panel, syncColorUI, eyedropper tool
+Phase: 5 of 7 (Selection Tools) — IN PROGRESS
+Plan: 1/4 complete
+Status: Phase 5 Plan 01 done — Selection data model + Rectangle Marquee tool complete; ready for 05-02
+Last activity: 2026-03-03 - Completed 05-01: selectionMask, marching-ants animation, Rectangle Marquee (M key)
 
-Progress: [██████████] 50%
+Progress: [████████████] 56%
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Progress: [██████████] 50%
 | Phase 03-core-tools P01 | 4 | 2 tasks | 1 files |
 | Phase 03-core-tools P02 | 4 | 2 tasks | 1 files |
 | Phase 03-core-tools P03 | 3 | 2 tasks | 1 files |
+| Phase 05-selection-tools P01 | 5 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -85,6 +86,10 @@ Recent decisions affecting current work:
 - [Phase 03-core-tools]: createConicGradient for HSL hue ring — single draw call, no pixel-by-pixel rendering
 - [Phase 03-core-tools]: _syncLock guard prevents infinite color update loop across wheel/hex/RGB/swatch controls
 - [Phase 03-core-tools]: Eyedropper reads from EditorState.pixels via getPixel(), never ctx.getImageData() to avoid premultiplied alpha corruption
+- [05-01]: selectionMask stored as flat Uint8Array — O(1) pixel lookup via x + y * width indexing
+- [05-01]: Path2D rebuilt once on setSelection; only lineDashOffset changes per RAF frame — avoids full rebuild at 60fps
+- [05-01]: invertSelection() stub added; btn-inverse wired now; Plan 03 will replace stub with real implementation
+- [05-01]: Zero-size marquee click calls clearSelection() rather than setting empty selection
 
 ### Pending Todos
 
@@ -106,6 +111,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 03-03-PLAN.md — Color Picker Panel + Eyedropper tool complete
-Next: Phase 3 Plan 04
+Stopped at: Completed 05-01-PLAN.md — Selection data model + Rectangle Marquee tool complete
+Next: Phase 5 Plan 02 (Magic Wand)
 Resume file: None
