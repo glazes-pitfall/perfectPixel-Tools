@@ -63,7 +63,7 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 - [ ] **XFM-02**: 选区旋转使用 RotSprite 算法（JavaScript 重新实现 Aseprite 的 Scale2x×3 + 最近邻旋转 + 下采样流程）
 - [ ] **XFM-03**: 变换/旋转激活时，顶栏显示 Apply ☑️（Enter）和 Cancel ✖️（ESC）
 - [ ] **XFM-04**: 变换/旋转激活时，顶栏显示 X 缩放倍率、Y 缩放倍率（可键入）、等比缩放勾选框、旋转角度（可键入）
-- [ ] **XFM-05**: Move Tool（快捷键 V）：移动选区时显示选区距画布四边的像素距离
+- [x] **XFM-05**: Move Tool（快捷键 V）：移动选区时显示选区距画布四边的像素距离
 
 ### CFG — 画布大小
 
@@ -130,7 +130,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | XFM-02 | Phase 6 | Pending |
 | XFM-03 | Phase 6 | Pending |
 | XFM-04 | Phase 6 | Pending |
-| XFM-05 | Phase 6 | Pending |
+| XFM-05 | Phase 6 | Complete |
 | CFG-01 | Phase 7 | Pending |
 | CFG-02 | Phase 7 | Pending |
 | CFG-03 | Phase 7 | Pending |

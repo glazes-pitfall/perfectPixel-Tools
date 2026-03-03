@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T17:29:49.931Z"
+last_updated: "2026-03-03T19:09:53.786Z"
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 6
-  total_plans: 21
-  completed_plans: 19
+  total_plans: 24
+  completed_plans: 20
 ---
 
 # Project State
@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: Phase 5 (Selection Tools) complete; Phase 5.1 (Visual Polish) complete; Phase 6 (Transform) next
-Plan: All Phase 5 + 5.1 plans complete; selection border rebuilt via Quick tasks 8–11
-Status: Phase 5 + 5.1 ALL DONE — selCanvas 移出 zoom-container，描边固定 2 CSS px，zoom 无关
-Last activity: 2026-03-04 - Marked Phase 5 + 5.1 complete; added Phase 6 selection-border reference to ROADMAP
+Phase: Phase 6 (Transform) — Plan 01 complete; Plan 02 (handle scale) next
+Plan: 06-01 DONE — Move(V) tool + transformState infrastructure + distance label; 06-02 next
+Status: Phase 6 in progress — Move tool floating model complete; handle scale + RotSprite remaining
+Last activity: 2026-03-04 - Completed 06-01 Move tool with transform infrastructure (commit 2376ffc)
 
 Progress: [████████████] 56%
 
@@ -63,6 +63,7 @@ Progress: [████████████] 56%
 | Phase 04.2-palette-ui P01 | 12 | 1 tasks | 1 files |
 | Phase 05.1 P01 | 8 | 2 tasks | 1 files |
 | Phase 04.2-palette-ui P02 | 15 | 3 tasks | 1 files |
+| Phase 06-transform P01 | 4 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,9 @@ Recent decisions affecting current work:
 - [Phase 04.2-palette-ui]: [04.2-02]: refreshSavedDropdown 空状态分支也追加上传选项，确保功能始终可达
 - [Phase 04.2-palette-ui]: [04.2-02]: loadPaletteBtnEl 逻辑内化到 refreshSavedDropdown click，deletePaletteBtnEl 全部删除（D4 决策）
 - [Phase 04.2-palette-ui]: [04.2-02]: exportDropBtn + palDropBtn 下拉用 style.display toggle（非 classList），与 Plan 01 HTML 模式一致
+- [Phase 06-01]: tools.move assigned after tools dict init (inside DOMContentLoaded) — avoids hoisting issues
+- [Phase 06-01]: activateTransform snapshots originalPixels BEFORE erasing — required for ESC restore correctness
+- [Phase 06-01]: applyTransform calls pushHistory() once for entire compound transform — one undo step
 
 ### Pending Todos
 
@@ -157,6 +161,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed quick-11 keyboard-shortcuts-help-modal — help button + shortcut modal with platform detection
-Next: Phase 6 (Transform)
+Stopped at: Completed 06-01-PLAN.md — Move(V) tool + transform infrastructure (commit 2376ffc)
+Next: Phase 6 Plan 02 — handle scale (8-handle bounding box scale for transform)
 Resume file: None
