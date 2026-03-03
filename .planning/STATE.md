@@ -146,6 +146,7 @@ None yet.
 | 8 | selection-border-visual-redesign-inverse | 2026-03-04 | 8e5d242 | [8-selection-border-visual-redesign-inverse](./quick/8-selection-border-visual-redesign-inverse/) |
 | 9 | selection-outer-border-2px-screen-jagged | 2026-03-04 | ce577a8 | [9-selection-outer-border-2px-screen-jagged](./quick/9-selection-outer-border-2px-screen-jagged/) |
 | 10 | selection-border-fixed-2px-screen-independent-of-zoom | 2026-03-04 | daaba7b | [10-selection-border-fixed-2px-screen-indepe](./quick/10-selection-border-fixed-2px-screen-indepe/) |
+| 11 | keyboard-shortcuts-help-modal | 2026-03-04 | a88ba33 | [11-keyboard-shortcuts-help-modal](./quick/11-keyboard-shortcuts-help-modal/) |
 
 ### Blockers/Concerns
 
@@ -156,6 +157,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed quick-9 selection-outer-border-2px-screen-jagged — SEL_PAD canvas overflow + drawAnts pixel-outline jagged border
-Next: Phase 5 (Selection Tools) 或 Phase 6 (Transform)
+Stopped at: Completed quick-11 keyboard-shortcuts-help-modal — help button + shortcut modal with platform detection
+Next: Phase 6 (Transform)
 Resume file: None
