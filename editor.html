@@ -3059,42 +3059,123 @@
 
       tools.move = {
         onDown(x, y, e) {
-          if (!EditorState.selection) return;  // no selection → no-op
-          const ts = EditorState.transformState;
-          if (!ts) {
-            activateTransform();
-            // After activation, start drag immediately
-            if (EditorState.transformState) {
-              EditorState.transformState._dragMode = 'move';
-              EditorState.transformState._dragStartClientX = e.clientX;
-              EditorState.transformState._dragStartClientY = e.clientY;
-              EditorState.transformState._dragStartFloatX  = EditorState.transformState.floatX;
-              EditorState.transformState._dragStartFloatY  = EditorState.transformState.floatY;
+          // Case 1: transform already active → check handle hit-test first
+          const existingTs = EditorState.transformState;
+          if (existingTs) {
+            const handleIdx = hitTestHandle(e.clientX, e.clientY);
+            if (handleIdx !== null) {
+              // Store original floatPixels for scale operations (source of truth)
+              existingTs._origFloatPixels  = existingTs.floatPixels.slice();
+              existingTs._origFloatW       = existingTs.floatW;
+              existingTs._origFloatH       = existingTs.floatH;
+              existingTs._dragMode         = 'handle-' + handleIdx;
+              existingTs._dragStartClientX = e.clientX;
+              existingTs._dragStartClientY = e.clientY;
+              existingTs._dragStartScaleX  = existingTs.scaleX;
+              existingTs._dragStartScaleY  = existingTs.scaleY;
+              existingTs._dragStartFloatX  = existingTs.floatX;
+              existingTs._dragStartFloatY  = existingTs.floatY;
+              return;
             }
-          } else {
-            // Already in transform mode: start a move drag
-            ts._dragMode = 'move';
-            ts._dragStartClientX = e.clientX;
-            ts._dragStartClientY = e.clientY;
-            ts._dragStartFloatX  = ts.floatX;
-            ts._dragStartFloatY  = ts.floatY;
+            // No handle hit → treat as move drag
+            existingTs._dragMode         = 'move';
+            existingTs._dragStartClientX = e.clientX;
+            existingTs._dragStartClientY = e.clientY;
+            existingTs._dragStartFloatX  = existingTs.floatX;
+            existingTs._dragStartFloatY  = existingTs.floatY;
+            return;
+          }
+          // Case 2: no transform yet → activate (requires a selection)
+          if (!EditorState.selection) return;
+          activateTransform();
+          if (EditorState.transformState) {
+            EditorState.transformState._dragMode         = 'move';
+            EditorState.transformState._dragStartClientX = e.clientX;
+            EditorState.transformState._dragStartClientY = e.clientY;
+            EditorState.transformState._dragStartFloatX  = EditorState.transformState.floatX;
+            EditorState.transformState._dragStartFloatY  = EditorState.transformState.floatY;
           }
         },
         onMove(x, y, e) {
           const ts = EditorState.transformState;
-          if (!ts || ts._dragMode !== 'move') return;
+          if (!ts) return;
 
-          const pixRect = pixelCanvas.getBoundingClientRect();
-          const ps      = pixRect.width / EditorState.width;
+          if (ts._dragMode === 'move') {
+            const pixRect = pixelCanvas.getBoundingClientRect();
+            const ps      = pixRect.width / EditorState.width;
+            const dx = Math.round((e.clientX - ts._dragStartClientX) / ps);
+            const dy = Math.round((e.clientY - ts._dragStartClientY) / ps);
+            ts.floatX = ts._dragStartFloatX + dx;
+            ts.floatY = ts._dragStartFloatY + dy;
+            _drawTransformUI();
+            _updateDistanceLabel();
+            return;
+          }
 
-          const dx = Math.round((e.clientX - ts._dragStartClientX) / ps);
-          const dy = Math.round((e.clientY - ts._dragStartClientY) / ps);
+          if (ts._dragMode && ts._dragMode.startsWith('handle-')) {
+            const handleIdx = parseInt(ts._dragMode.split('-')[1], 10);
+            const pixRect   = pixelCanvas.getBoundingClientRect();
+            const ps        = pixRect.width / EditorState.width;
 
-          ts.floatX = ts._dragStartFloatX + dx;
-          ts.floatY = ts._dragStartFloatY + dy;
+            // Delta in canvas pixels
+            const dxPx = Math.round((e.clientX - ts._dragStartClientX) / ps);
+            const dyPx = Math.round((e.clientY - ts._dragStartClientY) / ps);
 
-          _drawTransformUI();
-          _updateDistanceLabel();
+            // Original bbox dimensions
+            const origW = ts.origBbox.w;
+            const origH = ts.origBbox.h;
+            const lockAspect = document.getElementById('opt-scale-lock')?.checked ?? true;
+
+            // Compute new scale based on which handle is dragged
+            // Corners: both axes; TC/BC: Y only; ML/MR: X only
+            let newScaleX = ts._dragStartScaleX;
+            let newScaleY = ts._dragStartScaleY;
+
+            const corners = [0, 2, 5, 7];  // TL TR BL BR
+            const yOnlyH  = [1, 6];         // TC BC
+            const xOnlyH  = [3, 4];         // ML MR
+
+            if (corners.includes(handleIdx)) {
+              // Right-side corners (2, 7): drag right = increase X; left-side (0, 5): drag right = decrease X
+              const xSign = [2, 4, 7].includes(handleIdx) ? 1 : -1;
+              const ySign = [5, 6, 7].includes(handleIdx) ? 1 : -1;
+              newScaleX = Math.max(0.0625, (origW * ts._dragStartScaleX + dxPx * xSign) / origW);
+              newScaleY = Math.max(0.0625, (origH * ts._dragStartScaleY + dyPx * ySign) / origH);
+              if (lockAspect) {
+                const relX = Math.abs(newScaleX - ts._dragStartScaleX);
+                const relY = Math.abs(newScaleY - ts._dragStartScaleY);
+                if (relX > relY) newScaleY = newScaleX;
+                else             newScaleX = newScaleY;
+              }
+            } else if (yOnlyH.includes(handleIdx)) {
+              const ySign = handleIdx === 6 ? 1 : -1;
+              newScaleY = Math.max(0.0625, (origH * ts._dragStartScaleY + dyPx * ySign) / origH);
+              if (lockAspect) newScaleX = newScaleY;
+            } else if (xOnlyH.includes(handleIdx)) {
+              const xSign = handleIdx === 4 ? 1 : -1;
+              newScaleX = Math.max(0.0625, (origW * ts._dragStartScaleX + dxPx * xSign) / origW);
+              if (lockAspect) newScaleY = newScaleX;
+            }
+
+            ts.scaleX = newScaleX;
+            ts.scaleY = newScaleY;
+
+            // Resample from _origFloatPixels (captured at drag start, not from last frame)
+            const newW = Math.max(1, Math.round(ts.origBbox.w * ts.scaleX));
+            const newH = Math.max(1, Math.round(ts.origBbox.h * ts.scaleY));
+            ts.floatPixels = scaleNearestNeighbor(ts._origFloatPixels, ts._origFloatW, ts._origFloatH, newW, newH);
+            ts.floatW = newW;
+            ts.floatH = newH;
+
+            // Sync top-bar inputs
+            const sxEl = document.getElementById('opt-scale-x');
+            const syEl = document.getElementById('opt-scale-y');
+            if (sxEl) sxEl.value = Math.round(ts.scaleX * 100);
+            if (syEl) syEl.value = Math.round(ts.scaleY * 100);
+
+            _drawTransformUI();
+            return;
+          }
         },
         onUp(x, y, e) {
           const ts = EditorState.transformState;
@@ -3112,6 +3193,57 @@
       const btnCancelTransform = document.getElementById('btn-cancel-transform');
       if (btnApplyTransform)  btnApplyTransform.addEventListener('click', applyTransform);
       if (btnCancelTransform) btnCancelTransform.addEventListener('click', cancelTransform);
+
+      // ── Plan 06-02: Transform top-bar input bindings ──────────────────────────
+      let _scaleInputTimer = null;
+
+      function _applyScaleFromInputs() {
+        const ts = EditorState.transformState;
+        if (!ts) return;
+
+        const sxVal = parseFloat(document.getElementById('opt-scale-x')?.value) || 100;
+        const syVal = parseFloat(document.getElementById('opt-scale-y')?.value) || 100;
+
+        ts.scaleX = Math.max(0.0625, Math.min(16, sxVal / 100));
+        ts.scaleY = Math.max(0.0625, Math.min(16, syVal / 100));
+
+        // Resample from _origFloatPixels (snapshot at drag start, or fall back to activation state)
+        const srcPx = ts._origFloatPixels || ts.floatPixels;
+        const srcW  = ts._origFloatW      || ts.origBbox.w;
+        const srcH  = ts._origFloatH      || ts.origBbox.h;
+
+        const newW = Math.max(1, Math.round(ts.origBbox.w * ts.scaleX));
+        const newH = Math.max(1, Math.round(ts.origBbox.h * ts.scaleY));
+
+        ts.floatPixels = scaleNearestNeighbor(srcPx, srcW, srcH, newW, newH);
+        ts.floatW      = newW;
+        ts.floatH      = newH;
+
+        _drawTransformUI();
+      }
+
+      const scaleXInput  = document.getElementById('opt-scale-x');
+      const scaleYInput  = document.getElementById('opt-scale-y');
+      const scaleLockChk = document.getElementById('opt-scale-lock');
+
+      if (scaleXInput) {
+        scaleXInput.addEventListener('input', () => {
+          if (scaleLockChk?.checked) {
+            if (scaleYInput) scaleYInput.value = scaleXInput.value;
+          }
+          clearTimeout(_scaleInputTimer);
+          _scaleInputTimer = setTimeout(_applyScaleFromInputs, 300);
+        });
+      }
+      if (scaleYInput) {
+        scaleYInput.addEventListener('input', () => {
+          if (scaleLockChk?.checked) {
+            if (scaleXInput) scaleXInput.value = scaleYInput.value;
+          }
+          clearTimeout(_scaleInputTimer);
+          _scaleInputTimer = setTimeout(_applyScaleFromInputs, 300);
+        });
+      }
 
       // ── END Tool dispatch ─────────────────────────────────────────────────────
 
