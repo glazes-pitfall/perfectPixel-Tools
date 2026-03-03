@@ -648,6 +648,23 @@
       <button class="btn btn-primary" id="btn-apply-transform" style="padding:4px 10px; font-size:12px;">Apply ✓</button>
       <button class="btn btn-ghost"   id="btn-cancel-transform" style="padding:4px 10px; font-size:12px;">Cancel ✕</button>
     </div>
+    <div id="tool-settings-canvas-size" style="display:none; align-items:center; gap:6px; flex-wrap:wrap;">
+      <label style="font-size:12px;color:var(--text-muted);">W</label>
+      <input id="cfg-width"  type="number" min="1" value="64" style="width:52px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
+      <label style="font-size:12px;color:var(--text-muted);">H</label>
+      <input id="cfg-height" type="number" min="1" value="64" style="width:52px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
+      <span style="color:var(--border);padding:0 4px;">|</span>
+      <label style="font-size:12px;color:var(--text-muted);">L</label>
+      <input id="cfg-left"   type="number" value="0" style="width:44px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
+      <label style="font-size:12px;color:var(--text-muted);">R</label>
+      <input id="cfg-right"  type="number" value="0" style="width:44px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
+      <label style="font-size:12px;color:var(--text-muted);">T</label>
+      <input id="cfg-top"    type="number" value="0" style="width:44px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
+      <label style="font-size:12px;color:var(--text-muted);">B</label>
+      <input id="cfg-bottom" type="number" value="0" style="width:44px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
+      <button class="btn btn-primary" id="btn-cfg-apply"  style="padding:4px 10px;font-size:12px;margin-left:4px;">Apply ✓</button>
+      <button class="btn btn-ghost"   id="btn-cfg-cancel" style="padding:4px 10px;font-size:12px;">Cancel ✕</button>
+    </div>
     <button class="btn btn-ghost" id="btn-deselect" style="display:none" title="Deselect (Cmd+D)">Deselect</button>
     <button class="btn btn-ghost" id="btn-inverse"  style="display:none" title="Inverse (Shift+Cmd+I)">Inverse</button>
     <span style="flex:1"></span>
@@ -1149,13 +1166,27 @@
       updateSelectionUI();
       // Show/hide tool settings panels
       const panelIds = ['tool-settings-pencil', 'tool-settings-eraser', 'tool-settings-bucket',
-                        'tool-settings-marquee', 'tool-settings-wand', 'tool-settings-move'];
+                        'tool-settings-marquee', 'tool-settings-wand', 'tool-settings-move',
+                        'tool-settings-canvas-size'];
       panelIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
       const activePanel = document.getElementById('tool-settings-' + name);
       if (activePanel) activePanel.style.display = 'flex';
+      // canvas-size: initialize inputs and draw guides
+      if (name === 'canvas-size') {
+        const wEl = document.getElementById('cfg-width');
+        const hEl = document.getElementById('cfg-height');
+        if (wEl && EditorState.width)  wEl.value = EditorState.width;
+        if (hEl && EditorState.height) hEl.value = EditorState.height;
+        ['cfg-left','cfg-right','cfg-top','cfg-bottom'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = 0;
+        });
+        clearSelection();  // 清除已有选区，selection-canvas 腾出给参考线
+        setTimeout(() => { if (typeof drawCanvasSizeGuides === 'function') drawCanvasSizeGuides(); }, 0);
+      }
       // Cursor style follows active tool (eyedropper-active body class handles global cursor)
       if (cursorCanvas) {
         if (name === 'marquee' || name === 'wand' || name === 'eyedropper') {
@@ -1778,7 +1809,8 @@
 
     // B2 fix: hook set by DOMContentLoaded to redraw transform overlay on zoom change.
     // _drawTransformUI is defined inside DOMContentLoaded; applyZoom is in outer scope.
-    let _onZoomChanged = null;
+    // Multicast array replaces single _onZoomChanged reference.
+    let _onZoomChangedListeners = [];
 
     // Hook: called by setActiveTool (outer scope) to activate transform when switching to
     // Move tool. activateTransform is defined inside DOMContentLoaded so it needs bridging.
@@ -1813,8 +1845,8 @@
       clampScroll(area);
       const display = Number.isInteger(newZoom) ? newZoom + 'x' : newZoom.toFixed(1) + 'x';
       document.getElementById('zoom-display').textContent = display;
-      // B2 fix: redraw transform overlay when zoom changes
-      if (_onZoomChanged) _onZoomChanged();
+      // B2 fix: redraw transform overlay when zoom changes (multicast)
+      _onZoomChangedListeners.forEach(fn => fn());
     }
 
     /**
@@ -3863,17 +3895,134 @@
       // ── END Tool dispatch ─────────────────────────────────────────────────────
 
       // B2 fix: wire zoom hook — redraws transform overlay when applyZoom is called.
-      // _drawTransformUI is defined above in this DOMContentLoaded closure; _onZoomChanged
+      // _drawTransformUI is defined above in this DOMContentLoaded closure; _onZoomChangedListeners
       // is declared in outer scope so applyZoom (also outer scope) can call it.
-      _onZoomChanged = () => {
+      _onZoomChangedListeners.push(() => {
         if (EditorState.transformState) _drawTransformUI();
-      };
+      });
+      // Canvas Size guides also need to update on zoom change
+      _onZoomChangedListeners.push(() => {
+        if (EditorState.activeTool === 'canvas-size' && typeof drawCanvasSizeGuides === 'function') drawCanvasSizeGuides();
+      });
 
       // Wire move-tool hook: activates transform when setActiveTool('move') is called
       // from outer scope (setActiveTool can't directly call activateTransform here).
       _onMoveToolSelected = () => {
         if (EditorState.selectionMask && !EditorState.transformState) activateTransform();
       };
+
+      // ── Canvas Size Tool ──────────────────────────────────────────────────────
+      function _getCanvasSizeParams() {
+        const W  = parseInt(document.getElementById('cfg-width').value)  || EditorState.width;
+        const H  = parseInt(document.getElementById('cfg-height').value) || EditorState.height;
+        const L  = parseInt(document.getElementById('cfg-left').value)   || 0;
+        const R  = parseInt(document.getElementById('cfg-right').value)  || 0;
+        const T  = parseInt(document.getElementById('cfg-top').value)    || 0;
+        const B  = parseInt(document.getElementById('cfg-bottom').value) || 0;
+        // W/H are the final target canvas dimensions (direct values, independent of L/R/T/B)
+        // L/R/T/B only control offset of existing content in the new canvas
+        const newW = Math.max(1, W);
+        const newH = Math.max(1, H);
+        const offsetL = L;  // shift old content right by L pixels (negative = left)
+        const offsetT = T;  // shift old content down by T pixels (negative = up)
+        return { newW, newH, offsetL, offsetT };
+      }
+
+      function drawCanvasSizeGuides() {
+        if (EditorState.activeTool !== 'canvas-size') return;
+        const dpr = window.devicePixelRatio || 1;
+        selCtx.clearRect(0, 0, selCanvas.width / dpr, selCanvas.height / dpr);
+
+        if (!EditorState.pixels) return;
+
+        const { newW, newH, offsetL, offsetT } = _getCanvasSizeParams();
+
+        // Coordinate transform: canvas pixels → selCanvas CSS coords
+        const pixRect = pixelCanvas.getBoundingClientRect();
+        const caRect  = document.getElementById('canvas-area').getBoundingClientRect();
+        const originX = pixRect.left - caRect.left;
+        const originY = pixRect.top  - caRect.top;
+        const ps      = pixRect.width / EditorState.width;  // CSS px per canvas pixel
+
+        // New canvas edges in selCanvas CSS coords (offsetL/T = old content offset, new canvas TL at -offsetL/-offsetT)
+        const left   = originX - offsetL * ps;
+        const top    = originY - offsetT * ps;
+        const right  = left + newW * ps;
+        const bottom = top  + newH * ps;
+
+        const caW = selCanvas.width / dpr;
+        const caH = selCanvas.height / dpr;
+
+        // Expansion area blue overlay (semi-transparent)
+        selCtx.save();
+        selCtx.fillStyle = 'rgba(100,140,220,0.15)';
+        if (top < originY)
+          selCtx.fillRect(left, top, newW * ps, originY - top);
+        if (bottom > originY + EditorState.height * ps)
+          selCtx.fillRect(left, originY + EditorState.height * ps, newW * ps, bottom - (originY + EditorState.height * ps));
+        if (left < originX)
+          selCtx.fillRect(left, top, originX - left, newH * ps);
+        if (right > originX + EditorState.width * ps)
+          selCtx.fillRect(originX + EditorState.width * ps, top, right - (originX + EditorState.width * ps), newH * ps);
+        selCtx.restore();
+
+        // Purple solid reference lines (spanning full canvas-area)
+        selCtx.save();
+        selCtx.strokeStyle = '#7c6af7';
+        selCtx.lineWidth = 1;
+        selCtx.setLineDash([]);
+        selCtx.beginPath(); selCtx.moveTo(left, 0); selCtx.lineTo(left, caH); selCtx.stroke();
+        selCtx.beginPath(); selCtx.moveTo(right, 0); selCtx.lineTo(right, caH); selCtx.stroke();
+        selCtx.beginPath(); selCtx.moveTo(0, top); selCtx.lineTo(caW, top); selCtx.stroke();
+        selCtx.beginPath(); selCtx.moveTo(0, bottom); selCtx.lineTo(caW, bottom); selCtx.stroke();
+        selCtx.restore();
+      }
+
+      function applyCanvasSize() {
+        if (!EditorState.pixels) return;
+        const { newW, newH, offsetL, offsetT } = _getCanvasSizeParams();
+        const oldPixels = EditorState.pixels;
+        const oldW = EditorState.width;
+        const oldH = EditorState.height;
+
+        pushHistory();  // save-before (Apply is an immediate operation)
+
+        const newPixels = new Uint8ClampedArray(newW * newH * 4);  // fully transparent
+
+        const srcX0 = Math.max(0, -offsetL);
+        const srcY0 = Math.max(0, -offsetT);
+        const dstX0 = Math.max(0, offsetL);
+        const dstY0 = Math.max(0, offsetT);
+        const copyW = Math.min(oldW - srcX0, newW - dstX0);
+        const copyH = Math.min(oldH - srcY0, newH - dstY0);
+
+        if (copyW > 0 && copyH > 0) {
+          for (let row = 0; row < copyH; row++) {
+            const srcOff = ((srcY0 + row) * oldW + srcX0) * 4;
+            const dstOff = ((dstY0 + row) * newW + dstX0) * 4;
+            newPixels.set(oldPixels.subarray(srcOff, srcOff + copyW * 4), dstOff);
+          }
+        }
+
+        EditorState.pixels = newPixels;
+        clearSelection();          // clear old selection mask (coordinate system invalid)
+        initCanvases(newW, newH);  // rebuild 3-layer canvas + scroll space
+        flushPixels();
+        setActiveTool('pencil');   // exit canvas-size mode
+      }
+
+      function cancelCanvasSize() {
+        const dpr = window.devicePixelRatio || 1;
+        selCtx.clearRect(0, 0, selCanvas.width / dpr, selCanvas.height / dpr);
+        setActiveTool('pencil');
+      }
+
+      // Canvas Size input events → real-time guide update
+      ['cfg-width','cfg-height','cfg-left','cfg-right','cfg-top','cfg-bottom'].forEach(id => {
+        document.getElementById(id).addEventListener('input', drawCanvasSizeGuides);
+      });
+      document.getElementById('btn-cfg-apply').addEventListener('click', applyCanvasSize);
+      document.getElementById('btn-cfg-cancel').addEventListener('click', cancelCanvasSize);
 
       // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
       // canvasArea: receives wheel events (entire area incl. result panel)
@@ -3994,11 +4143,18 @@
             // Only switch to Move when a selection or active transform exists
             if (EditorState.selectionMask || EditorState.transformState) setActiveTool('move');
           }
+          if (e.key === 's' || e.key === 'S') {
+            if (EditorState.pixels) setActiveTool('canvas-size');
+          }
         }
         // Enter → apply transform (if active)
         if (e.key === 'Enter' && EditorState.transformState) {
           e.preventDefault();
           applyTransform();
+        }
+        // Escape → cancel canvas-size mode (check first, before other ESC handlers)
+        if (e.key === 'Escape' && EditorState.activeTool === 'canvas-size') {
+          cancelCanvasSize(); return;
         }
         // Eyedropper cancel: Escape restores _prevTool (fall back to pencil if _prevTool was null)
         if (e.key === 'Escape' && EditorState.activeTool === 'eyedropper') {
