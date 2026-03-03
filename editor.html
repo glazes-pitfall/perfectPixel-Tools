@@ -109,22 +109,33 @@
 
     /* ── Canvas Area ──────────────────────────────────────────────────────── */
     #canvas-area {
-      overflow: auto;
-      position: relative;
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
       background: var(--bg);
     }
 
-    /* Custom scrollbar for canvas area */
-    #canvas-area::-webkit-scrollbar { width: 8px; height: 8px; }
-    #canvas-area::-webkit-scrollbar-track { background: var(--surface); }
-    #canvas-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-    #canvas-area::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
-    #canvas-area::-webkit-scrollbar-corner { background: var(--surface); }
-
-    /* ── Zoom scroll content (PAD-padded scroll space for pan + zoom) ──────── */
+    /* Zoom scroll content fills remaining space, scrolls independently */
     #zoom-scroll-content {
+      flex: 1;
+      overflow: auto;
       position: relative;
     }
+
+    /* Custom scrollbar for zoom-scroll-content */
+    #zoom-scroll-content::-webkit-scrollbar { width: 8px; height: 8px; }
+    #zoom-scroll-content::-webkit-scrollbar-track { background: var(--surface); }
+    #zoom-scroll-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    #zoom-scroll-content::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+    #zoom-scroll-content::-webkit-scrollbar-corner { background: var(--surface); }
+
+    /* Palette result panel scrollbar */
+    #palette-result-panel::-webkit-scrollbar { width: 6px; }
+    #palette-result-panel::-webkit-scrollbar-track { background: transparent; }
+    #palette-result-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* .btn-download inside palette result panel */
+    #palette-result-panel .btn-download { display: block; }
 
     /* ── Zoom container (CSS transform target; contains 3-canvas stack) ────── */
     #zoom-container {
@@ -655,6 +666,24 @@
           <canvas id="cursor-canvas"></canvas>
         </div>
       </div>
+      <!-- PAL-02: Palette result panel (side-by-side diff) -->
+      <div id="palette-result-panel" style="display:none; flex-direction:column; gap:8px; padding:12px; flex-shrink:0; border-left:1px solid var(--border); overflow-y:auto; min-width:280px; background:var(--surface);">
+        <div style="font-size:12px; font-weight:600; color:var(--text-muted);">色卡结果</div>
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <div>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">原图</div>
+            <img id="pal-result-original" style="image-rendering:pixelated; max-width:240px; display:block; border:1px solid var(--border); border-radius:4px;">
+            <a id="pal-dl-orig-exact" class="btn-download" style="display:block; margin-top:4px;" download="original.png">&#8595; 下载精准版</a>
+          </div>
+          <div>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">色卡映射</div>
+            <img id="pal-result-mapped" style="image-rendering:pixelated; max-width:240px; display:block; border:1px solid var(--border); border-radius:4px;">
+            <a id="pal-dl-mapped-exact" class="btn-download" style="display:block; margin-top:4px;" download="output_palette.png">&#8595; 下载精准版</a>
+            <a id="pal-dl-mapped-scaled" class="btn-download" style="display:block; margin-top:4px;" download="output_palette_scaled.png">&#8595; 下载放大版</a>
+          </div>
+        </div>
+        <button id="pal-result-close" class="btn btn-ghost" style="font-size:11px; margin-top:4px; width:100%;">关闭结果</button>
+      </div>
     </div>
 
     <!-- Right Panel (tool strip — disabled in Phase 1) -->
@@ -852,6 +881,40 @@
       // When _syncFromDrag: _slCursorX/Y, currentHue, currentSat already set by drag
       redrawPicker();
       _syncLock = false;
+      highlightMatchingSwatches(); // PAL-02: 每次颜色变化后刷新高亮
+    }
+
+    // ── PAL-02: Highlight matching swatches ───────────────────────────────────
+    // Called after every syncColorUI() — highlights swatches that exactly match
+    // the current foreground color (RGB comparison, no tolerance).
+    function highlightMatchingSwatches() {
+      if (!EditorState.pixels) return;
+      const [fr, fg, fb] = EditorState.foregroundColor;
+      document.querySelectorAll('#swatchesGrid .swatch').forEach((sw, idx) => {
+        if (idx >= currentPalette.length) return;
+        const [r, g, b] = currentPalette[idx];
+        if (r === fr && g === fg && b === fb) {
+          sw.style.boxShadow = '0 0 0 2px #fff, 0 0 8px 4px rgb(' + r + ',' + g + ',' + b + ')';
+          sw.style.zIndex = '3';
+        } else {
+          sw.style.boxShadow = '';
+          sw.style.zIndex = '';
+        }
+      });
+    }
+
+    // ── getEditorImageB64: export current pixels as base64 PNG ───────────────
+    function getEditorImageB64() {
+      if (!EditorState.pixels || !EditorState.width || !EditorState.height) return null;
+      const off = document.createElement('canvas');
+      off.width = EditorState.width;
+      off.height = EditorState.height;
+      const octx = off.getContext('2d');
+      octx.putImageData(
+        new ImageData(EditorState.pixels.slice(), EditorState.width, EditorState.height),
+        0, 0
+      );
+      return off.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
     }
 
     // ── EditorState — Single Source of Truth ─────────────────────────────────
@@ -1159,8 +1222,9 @@
     function applyStamp(cx, cy, stamp, color) {
       for (const [dx, dy] of stamp) {
         const x = cx + dx, y = cy + dy;
-        if (x >= 0 && x < EditorState.width && y >= 0 && y < EditorState.height)
-          setPixel(x, y, color);
+        if (x >= 0 && x < EditorState.width && y >= 0 && y < EditorState.height) {
+          if (isSelectedPixel(x, y)) setPixel(x, y, color);
+        }
       }
       flushPixels();
     }
@@ -1335,7 +1399,7 @@
           const idx = stack.pop();
           const px = idx % EditorState.width;
           const py = (idx / EditorState.width) | 0;
-          setPixel(px, py, fillColor);
+          if (isSelectedPixel(px, py)) setPixel(px, py, fillColor);
           const neighbors = [
             [px - 1, py], [px + 1, py], [px, py - 1], [px, py + 1]
           ];
@@ -1352,7 +1416,7 @@
         // Non-contiguous: scan every pixel for color match
         for (let y = 0; y < EditorState.height; y++)
           for (let x = 0; x < EditorState.width; x++)
-            if (matches(x, y)) setPixel(x, y, fillColor);
+            if (matches(x, y) && isSelectedPixel(x, y)) setPixel(x, y, fillColor);
       }
       flushPixels();
     }
@@ -1437,14 +1501,13 @@
      * Call after initCanvases() and after loading a new image.
      */
     function centerCanvas() {
-      const area = document.getElementById('canvas-area');
-      const sc   = document.getElementById('zoom-scroll-content');
+      const area = document.getElementById('zoom-scroll-content');
       const zoom = EditorState.zoom;
       const W = EditorState.width  * zoom;
       const H = EditorState.height * zoom;
       // Scroll content must be large enough to hold canvas + PAD on all sides
-      sc.style.width  = (2 * PAD + W) + 'px';
-      sc.style.height = (2 * PAD + H) + 'px';
+      area.style.width  = (2 * PAD + W) + 'px';
+      area.style.height = (2 * PAD + H) + 'px';
       // Position zoom-container at (PAD, PAD) in scroll-content
       const zc = document.getElementById('zoom-container');
       zc.style.left = PAD + 'px';
@@ -1478,13 +1541,12 @@
     function applyZoom(newZoom, pivotClientX, pivotClientY) {
       const oldZoom = EditorState.zoom;
       newZoom = Math.max(0.25, Math.min(64, newZoom));
-      const area = document.getElementById('canvas-area');
-      const sc   = document.getElementById('zoom-scroll-content');
+      const area = document.getElementById('zoom-scroll-content');
       // Update scroll-content size for new zoom (must happen BEFORE adjusting scroll)
       const newW = EditorState.width  * newZoom;
       const newH = EditorState.height * newZoom;
-      sc.style.width  = (2 * PAD + newW) + 'px';
-      sc.style.height = (2 * PAD + newH) + 'px';
+      area.style.width  = (2 * PAD + newW) + 'px';
+      area.style.height = (2 * PAD + newH) + 'px';
       // Pivot in scroll-content coordinates
       const areaRect = area.getBoundingClientRect();
       const pxInArea = pivotClientX - areaRect.left;
