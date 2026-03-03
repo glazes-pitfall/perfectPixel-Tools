@@ -1105,6 +1105,34 @@
       }
     }
 
+    function deleteSelection() {
+      if (!EditorState.selectionMask) return;
+      pushHistory();  // bucket model: push before writes
+      const W = EditorState.width;
+      for (let i = 0; i < EditorState.selectionMask.length; i++) {
+        if (EditorState.selectionMask[i]) {
+          const x = i % W, y = (i / W) | 0;
+          setPixel(x, y, [0, 0, 0, 0]);  // transparent — global constraint allows alpha=0
+        }
+      }
+      flushPixels();
+    }
+
+    function fillSelection() {
+      if (!EditorState.selectionMask) return;
+      pushHistory();  // bucket model: push before writes
+      const W = EditorState.width;
+      const color = [...EditorState.foregroundColor];
+      color[3] = 255;  // enforce fully opaque (global tool output constraint)
+      for (let i = 0; i < EditorState.selectionMask.length; i++) {
+        if (EditorState.selectionMask[i]) {
+          const x = i % W, y = (i / W) | 0;
+          setPixel(x, y, color);
+        }
+      }
+      flushPixels();
+    }
+
     function rebuildAntsPath(mask, W, H) {
       _antsPath = new Path2D();
       for (let y = 0; y < H; y++) {
@@ -1583,6 +1611,7 @@
         // One-time getImageData — afterwards all reads go through EditorState.pixels
         const imageData = pixelCtx.getImageData(0, 0, width, height);
         EditorState.pixels = imageData.data.slice(); // Uint8ClampedArray copy
+        clearSelection(); // Per CONTEXT.md: loading new image clears selection
         flushPixels(); // re-render from EditorState.pixels (establishes canonical path)
         bitmap.close();
       } catch (err) {
@@ -2417,6 +2446,16 @@
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'i') {
           e.preventDefault();
           invertSelection();
+        }
+        // Delete → clear selected pixels (fill with transparent)
+        if (e.key === 'Delete' && !e.altKey && EditorState.selectionMask) {
+          e.preventDefault();
+          deleteSelection();
+        }
+        // Option+Delete (Alt+Backspace on some systems) → fill selected pixels with foreground color
+        if ((e.key === 'Delete' || e.key === 'Backspace') && e.altKey && EditorState.selectionMask) {
+          e.preventDefault();
+          fillSelection();
         }
         // Tool shortcuts (no modifier — guard against text inputs handled above)
         if (!e.ctrlKey && !e.metaKey) {
