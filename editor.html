@@ -1880,7 +1880,8 @@
     // ── PAL-04: 破坏性应用色卡 — 三模式（vector / perceptual / swap）────────
     async function applyPalette() {
       if (!EditorState.pixels || currentPalette.length === 0) return;
-      const mode = (document.querySelector('input[name="mappingMode"]:checked') || {value: 'vector'}).value;
+      const modeEl = document.getElementById('mappingModeSelect');
+      const mode = modeEl ? modeEl.value : 'vector';
       const px = EditorState.pixels;
       const pal = currentPalette;
 
@@ -2707,19 +2708,9 @@
 
       // Palette file upload
       const palFileInputEl = document.getElementById('palFileInput');
-      const palUploadZoneEl = document.getElementById('palUploadZone');
       if (palFileInputEl) {
         palFileInputEl.addEventListener('change', async () => {
           const file = palFileInputEl.files[0];
-          if (file) await uploadPaletteFile(file);
-        });
-      }
-      if (palUploadZoneEl) {
-        palUploadZoneEl.addEventListener('dragover', e => { e.preventDefault(); palUploadZoneEl.classList.add('dragover'); });
-        palUploadZoneEl.addEventListener('dragleave', () => palUploadZoneEl.classList.remove('dragover'));
-        palUploadZoneEl.addEventListener('drop', async e => {
-          e.preventDefault(); palUploadZoneEl.classList.remove('dragover');
-          const file = e.dataTransfer.files[0];
           if (file) await uploadPaletteFile(file);
         });
       }
@@ -2750,18 +2741,19 @@
         }
       });
 
-      // Saved palettes dropdown
-      const savedPalettesTriggerEl = document.getElementById('savedPaletteTrigger');
-      const savedPalettesDropdownEl = document.getElementById('savedPalettesDropdown');
-      if (savedPalettesTriggerEl && savedPalettesDropdownEl) {
-        savedPalettesTriggerEl.addEventListener('click', e => {
+      // palDropBtn：新 combobox 下拉触发器（替代旧 savedPalettesTriggerEl）
+      const palDropBtnEl = document.getElementById('palDropBtn');
+      const savedPaletteOptionsEl = document.getElementById('savedPaletteOptions');
+      if (palDropBtnEl && savedPaletteOptionsEl) {
+        palDropBtnEl.addEventListener('click', e => {
           e.stopPropagation();
-          savedPalettesDropdownEl.classList.toggle('open');
+          refreshSavedDropdown();
+          const isOpen = savedPaletteOptionsEl.style.display !== 'none';
+          savedPaletteOptionsEl.style.display = isOpen ? 'none' : 'block';
         });
         document.addEventListener('click', e => {
-          if (!savedPalettesDropdownEl.contains(e.target)) {
-            savedPalettesDropdownEl.classList.remove('open');
-          }
+          if (!e.target.closest('#savedPaletteOptions') && e.target !== palDropBtnEl)
+            savedPaletteOptionsEl.style.display = 'none';
         });
       }
 
@@ -2784,39 +2776,18 @@
         });
       }
 
-      // Load palette button
-      const loadPaletteBtnEl = document.getElementById('loadPaletteBtn');
-      if (loadPaletteBtnEl) {
-        loadPaletteBtnEl.addEventListener('click', () => {
-          if (!selectedPaletteKey) { palShowStatus('请先选择一个已保存的色卡', 'warning'); return; }
-          const saved = getSavedPalettes();
-          if (!saved[selectedPaletteKey]) { palShowStatus('找不到该色卡', 'error'); return; }
-          currentPaletteMeta = { name: selectedPaletteKey, source: 'upload', algorithm: '', count: saved[selectedPaletteKey].length };
-          setCurrentPalette(saved[selectedPaletteKey]);
-          const paletteNameEl = document.getElementById('paletteName');
-          if (paletteNameEl) paletteNameEl.value = selectedPaletteKey;
-          palShowStatus(`已加载色卡「${selectedPaletteKey}」：${saved[selectedPaletteKey].length} 色`, 'success');
+      // 导出下拉按钮（exportDropBtn 开关逻辑）
+      const exportDropBtnEl = document.getElementById('exportDropBtn');
+      const exportMenuEl = document.getElementById('exportMenu');
+      if (exportDropBtnEl && exportMenuEl) {
+        exportDropBtnEl.addEventListener('click', e => {
+          e.stopPropagation();
+          exportMenuEl.style.display = exportMenuEl.style.display === 'none' ? 'block' : 'none';
         });
+        document.addEventListener('click', () => { exportMenuEl.style.display = 'none'; });
       }
 
-      // Delete palette button
-      const deletePaletteBtnEl = document.getElementById('deletePaletteBtn');
-      if (deletePaletteBtnEl) {
-        deletePaletteBtnEl.addEventListener('click', () => {
-          if (!selectedPaletteKey) { palShowStatus('请先选择一个色卡', 'warning'); return; }
-          const saved = getSavedPalettes();
-          const name = selectedPaletteKey;
-          delete saved[name];
-          setSavedPalettes(saved);
-          selectedPaletteKey = '';
-          const trigText = document.getElementById('savedPaletteTriggerText');
-          if (trigText) trigText.textContent = '— 选择已保存色卡 —';
-          refreshSavedDropdown();
-          palShowStatus(`已删除色卡「${name}」`, 'success');
-        });
-      }
-
-      // Export buttons
+      // Export buttons（exportAct/Gpl/Pal id 不变，绑定保持不变）
       const exportActEl = document.getElementById('exportAct');
       const exportGplEl = document.getElementById('exportGpl');
       const exportPalEl = document.getElementById('exportPal');
