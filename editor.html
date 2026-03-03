@@ -204,43 +204,161 @@
       outline: none; border-color: var(--accent);
     }
 
-    /* ── Color Picker Style System ───────────────────────────────────────────── */
-    .picker-body { display: none; }
-    #color-picker-panel[data-style="a"] #picker-body-a { display: block; }
-    #color-picker-panel[data-style="b"] #picker-body-b { display: block; }
-    #color-picker-panel[data-style="c"] #picker-body-c { display: block; }
-
-    .picker-style-btn {
-      padding: 3px 8px; border-radius: 4px; border: 1px solid var(--border);
-      background: var(--surface2); color: var(--text-muted);
-      font-size: 11px; font-weight: 700; cursor: pointer; line-height: 1;
+    /* ── Palette section (ported from web_ui.html) ───────────────────────────── */
+    .palette-section { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .palette-header {
+      padding: 9px 12px; background: var(--surface2);
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none;
     }
-    .picker-style-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .palette-header .title { font-size: 12px; font-weight: 700; }
+    .palette-header .chevron { font-size: 10px; color: var(--text-muted); transition: transform .2s; }
+    .palette-header.open .chevron { transform: rotate(180deg); }
+    .palette-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .palette-body.hidden { display: none; }
 
-    /* ── Style A: Swatch-First ──────────────────────────────────────────────── */
-    .pa-swatch { width:100%; height:44px; border-radius:6px; border:1px solid var(--border); margin-bottom:8px; }
-    .pa-hex-row { display:flex; align-items:stretch; margin-bottom:8px; border:1px solid var(--border); border-radius:5px; overflow:hidden; }
-    .pa-hex-prefix { padding:4px 7px; background:var(--surface2); color:var(--text-muted); font-size:12px; font-family:monospace; border-right:1px solid var(--border); display:flex; align-items:center; }
-    .pa-hex-input { flex:1; padding:4px 6px; border:none; background:var(--bg); color:var(--text); font-size:12px; font-family:monospace; outline:none; min-width:0; }
-    .pa-rgb-row { display:flex; gap:4px; }
-    .pa-channel { flex:1; display:flex; align-items:center; gap:4px; }
-    .pa-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-    .pa-channel-input { flex:1; min-width:0; padding:3px 2px; border:1px solid var(--border); border-radius:4px; background:var(--surface2); color:var(--text); font-size:11px; text-align:center; outline:none; }
-    .pa-channel-input:focus { border-color:var(--accent); }
+    /* Toggle switch */
+    .toggle-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; cursor: pointer; transition: background .2s;
+    }
+    .toggle-track::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--text-muted); transition: transform .2s, background .2s;
+    }
+    .toggle-switch input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+    .toggle-switch input:checked + .toggle-track::after { transform: translateX(16px); background: #fff; }
 
-    /* ── Style B: Minimal Line ───────────────────────────────────────────────── */
-    .pb-top-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
-    .pb-swatch-small { width:32px; height:32px; border-radius:4px; border:1px solid var(--border); flex-shrink:0; }
-    .pb-hex-display { flex:1; font-size:15px; font-family:monospace; font-weight:700; color:var(--text); background:none; border:none; border-bottom:1px solid transparent; outline:none; padding:0; min-width:0; }
-    .pb-hex-display:focus { border-bottom-color:var(--accent); }
-    .pb-row { display:flex; align-items:center; gap:8px; padding:4px 0; border-bottom:1px solid var(--border); }
-    .pb-row:last-of-type { border-bottom:none; }
-    .pb-label { font-size:11px; color:var(--text-muted); min-width:10px; font-family:monospace; font-weight:700; }
-    .pb-dash { flex:1; height:1px; background:var(--border); }
-    .pb-num { font-size:13px; font-family:monospace; font-weight:600; color:var(--text); width:36px; text-align:right; background:none; border:none; outline:none; padding:0; }
-    .pb-num:focus { color:var(--accent); }
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; }
+    .tab-btn {
+      flex: 1; padding: 6px; border-radius: 6px; border: 1px solid var(--border);
+      background: transparent; color: var(--text-muted); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all .15s;
+    }
+    .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
 
-    /* ── Style C: Structured Dark Tool ──────────────────────────────────────── */
+    /* Palette file upload zone */
+    .pal-upload-zone {
+      border: 2px dashed var(--border); border-radius: 7px;
+      padding: 14px 10px; text-align: center; cursor: pointer;
+      position: relative; transition: border-color .2s, background .2s;
+      font-size: 12px; color: var(--text-muted);
+    }
+    .pal-upload-zone:hover, .pal-upload-zone.dragover { border-color: var(--accent); background: rgba(124,106,247,.06); }
+    .pal-upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+    /* Swatches — outer wrapper prevents glow clipping */
+    .swatches-outer { max-height: 140px; overflow-y: auto; }
+    .swatches-label { display: flex; align-items: center; justify-content: space-between; }
+    .swatches-count { font-size: 11px; color: var(--text-muted); }
+    .swatches-grid {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      padding: 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+      overflow: visible;
+    }
+    .swatch {
+      width: 28px; height: 28px; border-radius: 4px; cursor: pointer;
+      border: 2px solid transparent; position: relative; flex-shrink: 0;
+      transition: transform .1s, border-color .1s;
+    }
+    .swatch:hover { transform: scale(1.15); border-color: rgba(255,255,255,.5); z-index: 2; }
+    .swatch .del-btn {
+      display: none; position: absolute; top: -5px; right: -5px;
+      width: 14px; height: 14px; border-radius: 50%; background: var(--error); color: #fff;
+      font-size: 9px; font-weight: 900; align-items: center; justify-content: center;
+      cursor: pointer; border: none; line-height: 1;
+    }
+    .swatch:hover .del-btn { display: flex; }
+    .swatches-empty { color: var(--text-muted); font-size: 12px; padding: 8px; text-align: center; }
+
+    /* Color editor popup */
+    .color-popup {
+      position: fixed; z-index: 999; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 9px;
+      box-shadow: 0 8px 32px rgba(0,0,0,.5); min-width: 200px;
+    }
+    .color-popup .popup-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; }
+    .color-popup input[type=color] { width: 100%; height: 36px; border: none; border-radius: 6px; cursor: pointer; padding: 2px; background: var(--surface2); }
+    .color-popup .rgb-row { display: flex; gap: 5px; align-items: center; }
+    .color-popup .rgb-row label { font-size: 11px; color: var(--text-muted); width: 12px; flex-shrink: 0; }
+    .color-popup .rgb-row input { padding: 4px 6px; font-size: 12px; }
+    .color-popup .hex-row { display: flex; gap: 5px; align-items: center; }
+    .color-popup .hex-row label { font-size: 11px; color: var(--text-muted); }
+    .color-popup .hex-row input { font-family: monospace; font-size: 12px; padding: 4px 6px; }
+    .color-popup .popup-actions { display: flex; gap: 6px; }
+
+    /* Save/load */
+    .save-row { display: flex; gap: 6px; }
+    .save-row input { flex: 1; }
+
+    /* Custom dropdown for saved palettes */
+    .custom-select { position: relative; }
+    .custom-select-trigger {
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 6px 9px; font-size: 13px;
+      cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+      user-select: none; transition: border-color .2s;
+    }
+    .custom-select-trigger:hover { border-color: var(--accent); }
+    .custom-select.open .custom-select-trigger { border-color: var(--accent); }
+    .custom-select-trigger .caret { font-size: 9px; color: var(--text-muted); transition: transform .2s; }
+    .custom-select.open .caret { transform: rotate(180deg); }
+    .custom-select-options {
+      display: none; position: absolute; z-index: 200; top: calc(100% + 4px); left: 0; right: 0;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      max-height: 280px; overflow-y: auto; box-shadow: 0 8px 24px rgba(0,0,0,.5);
+    }
+    .custom-select.open .custom-select-options { display: block; }
+    .custom-option {
+      padding: 8px 12px; cursor: pointer; transition: background .1s; border-bottom: 1px solid var(--border);
+    }
+    .custom-option:last-child { border-bottom: none; }
+    .custom-option:hover { background: rgba(124,106,247,.1); }
+    .custom-option.selected { background: rgba(124,106,247,.15); }
+    .custom-option-empty { padding: 10px 12px; color: var(--text-muted); font-size: 12px; text-align: center; }
+    .option-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .option-swatches { display: flex; flex-wrap: wrap; gap: 2px; }
+    .option-swatches span { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+    /* Export */
+    .export-row { display: flex; gap: 5px; }
+    .export-row .btn { flex: 1; font-size: 11px; padding: 6px 4px; }
+
+    /* Mapping modes */
+    .mode-group { display: flex; flex-direction: column; gap: 5px; }
+    .mode-option {
+      display: flex; align-items: flex-start; gap: 7px; cursor: pointer;
+      padding: 5px 7px; border-radius: 6px; border: 1px solid transparent; transition: border-color .15s;
+    }
+    .mode-option:has(input:checked) { border-color: var(--accent); background: rgba(124,106,247,.06); }
+    .mode-option input[type=radio] { accent-color: var(--accent); margin-top: 1px; cursor: pointer; flex-shrink: 0; }
+    .mode-option .mode-label { font-size: 12px; font-weight: 600; }
+    .mode-option .mode-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+
+    /* section-label (sub-heading within palette body) */
+    .section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+
+    /* control-group / slider-row for nColors / minRegionPct */
+    .control-group { display: flex; flex-direction: column; gap: 4px; }
+    .control-group label { font-size: 12px; color: var(--text-muted); }
+    .slider-row { display: flex; gap: 6px; align-items: center; }
+    .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+    .n-colors-input { width: 52px; padding: 3px 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 12px; }
+
+    /* Generic text input styling within palette body */
+    .palette-body input[type=text] {
+      padding: 6px 9px; border-radius: 6px; border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text); font-size: 13px; width: 100%;
+    }
+    .palette-body input[type=text]:focus { outline: none; border-color: var(--accent); }
+
+    /* ── Color Picker ────────────────────────────────────────────────────────── */
     .pc-hex-row { display:flex; align-items:stretch; margin-bottom:10px; }
     .pc-hash { display:flex; align-items:center; padding:0 9px; background:var(--accent); color:#fff; font-size:14px; font-weight:700; border-radius:5px 0 0 5px; flex-shrink:0; cursor:pointer; }
     .pc-hex-input { flex:1; padding:5px 8px; border:1px solid var(--accent); border-left:none; background:var(--surface2); color:var(--text); font-size:13px; font-family:monospace; font-weight:600; outline:none; min-width:0; }
@@ -308,13 +426,20 @@
       </label>
     </div>
 
-    <!-- Color picker style switcher -->
-    <div style="display:flex; align-items:center; gap:3px; border-left:1px solid var(--border); padding-left:10px; margin-left:4px;">
-      <span style="font-size:10px; color:var(--text-muted); margin-right:2px;">调色盘</span>
-      <button class="picker-style-btn" data-ps="a">A</button>
-      <button class="picker-style-btn" data-ps="b">B</button>
-      <button class="picker-style-btn" data-ps="c">C</button>
+    <div id="tool-settings-wand" style="display:none; align-items:center; gap:8px;">
+      <label style="font-size:12px; color:var(--text-muted);">Tolerance</label>
+      <input id="opt-wand-tolerance" type="number" min="0" max="255" value="15"
+        style="width:52px; padding:3px 6px; border-radius:5px; border:1px solid var(--border);
+               background:var(--surface2); color:var(--text); font-size:12px;">
+      <label style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:4px; cursor:pointer;">
+        <input id="opt-wand-contiguous" type="checkbox" checked>Contiguous
+      </label>
     </div>
+    <div id="tool-settings-marquee" style="display:none; align-items:center; gap:8px;">
+      <span style="font-size:12px; color:var(--text-muted);">Grid-snapped selection</span>
+    </div>
+    <button class="btn btn-ghost" id="btn-deselect" style="display:none" title="Deselect (Cmd+D)">Deselect</button>
+    <button class="btn btn-ghost" id="btn-inverse"  style="display:none" title="Inverse (Shift+Cmd+I)">Inverse</button>
     <span style="flex:1"></span>
     <!-- Zoom controls (ACTIVE in Phase 1) -->
     <button class="btn btn-ghost" id="btn-zoom-out" title="Zoom out (Ctrl+-)">−</button>
@@ -342,87 +467,36 @@
       </div>
 
       <!-- Color Picker Panel (permanent, between scroll area and pixel inspector) -->
-      <div id="color-picker-panel" data-style="a" style="flex-shrink:0; border-top:1px solid var(--border); padding:12px; background:var(--surface);">
-        <!-- HSL Wheel Canvas (shared by all styles) -->
+      <div id="color-picker-panel" style="flex-shrink:0; border-top:1px solid var(--border); padding:12px; background:var(--surface);">
+        <!-- HSL Wheel Canvas -->
         <canvas id="picker-canvas" width="160" height="160"
           style="display:block; margin:0 auto 10px; cursor:crosshair; image-rendering:pixelated;"></canvas>
 
-        <!-- Style A: Swatch-First -->
-        <div id="picker-body-a" class="picker-body">
-          <div class="pa-swatch" id="pa-swatch"></div>
-          <div class="pa-hex-row">
-            <span class="pa-hex-prefix">#</span>
-            <input id="pa-hex" class="pa-hex-input" type="text" maxlength="6" value="000000">
-            <button id="pa-copy" class="btn btn-ghost" style="border:none; border-left:1px solid var(--border); border-radius:0; padding:3px 7px; font-size:11px;" title="Copy hex">&#128203;</button>
-          </div>
-          <div class="pa-rgb-row">
-            <div class="pa-channel">
-              <div class="pa-dot" style="background:#f87171;"></div>
-              <input id="pa-r" class="pa-channel-input" type="number" min="0" max="255" value="0">
-            </div>
-            <div class="pa-channel">
-              <div class="pa-dot" style="background:#4ade80;"></div>
-              <input id="pa-g" class="pa-channel-input" type="number" min="0" max="255" value="0">
-            </div>
-            <div class="pa-channel">
-              <div class="pa-dot" style="background:#60a5fa;"></div>
-              <input id="pa-b" class="pa-channel-input" type="number" min="0" max="255" value="0">
-            </div>
-          </div>
+        <div class="pc-hex-row">
+          <span class="pc-hash">#</span>
+          <input id="pc-hex" class="pc-hex-input" type="text" maxlength="6" value="000000">
+          <button id="pc-copy" class="btn btn-ghost" style="border-radius:0 5px 5px 0; border-left:none; border-color:var(--accent); padding:3px 7px; font-size:11px;" title="Copy hex">&#128203;</button>
         </div>
-
-        <!-- Style B: Minimal Line -->
-        <div id="picker-body-b" class="picker-body">
-          <div class="pb-top-row">
-            <div class="pb-swatch-small" id="pb-swatch"></div>
-            <input id="pb-hex" class="pb-hex-display" type="text" maxlength="7" value="#000000">
-            <button id="pb-copy" class="btn btn-ghost" style="padding:3px 7px; font-size:11px;" title="Copy hex">&#128203;</button>
+        <div class="pc-channel-row">
+          <span class="pc-channel-label">R</span>
+          <div class="pc-channel-bar-wrap">
+            <div id="pc-bar-r" class="pc-channel-bar" style="background:#f87171; width:0%;"></div>
           </div>
-          <div class="pb-row">
-            <span class="pb-label">R</span>
-            <div class="pb-dash"></div>
-            <input id="pb-r" class="pb-num" type="number" min="0" max="255" value="0">
-          </div>
-          <div class="pb-row">
-            <span class="pb-label">G</span>
-            <div class="pb-dash"></div>
-            <input id="pb-g" class="pb-num" type="number" min="0" max="255" value="0">
-          </div>
-          <div class="pb-row">
-            <span class="pb-label">B</span>
-            <div class="pb-dash"></div>
-            <input id="pb-b" class="pb-num" type="number" min="0" max="255" value="0">
-          </div>
+          <input id="pc-r" class="pc-channel-num" type="number" min="0" max="255" value="0">
         </div>
-
-        <!-- Style C: Structured Dark Tool -->
-        <div id="picker-body-c" class="picker-body">
-          <div class="pc-hex-row">
-            <span class="pc-hash">#</span>
-            <input id="pc-hex" class="pc-hex-input" type="text" maxlength="6" value="000000">
-            <button id="pc-copy" class="btn btn-ghost" style="border-radius:0 5px 5px 0; border-left:none; border-color:var(--accent); padding:3px 7px; font-size:11px;" title="Copy hex">&#128203;</button>
+        <div class="pc-channel-row">
+          <span class="pc-channel-label">G</span>
+          <div class="pc-channel-bar-wrap">
+            <div id="pc-bar-g" class="pc-channel-bar" style="background:#4ade80; width:0%;"></div>
           </div>
-          <div class="pc-channel-row">
-            <span class="pc-channel-label">R</span>
-            <div class="pc-channel-bar-wrap">
-              <div id="pc-bar-r" class="pc-channel-bar" style="background:#f87171; width:0%;"></div>
-            </div>
-            <input id="pc-r" class="pc-channel-num" type="number" min="0" max="255" value="0">
+          <input id="pc-g" class="pc-channel-num" type="number" min="0" max="255" value="0">
+        </div>
+        <div class="pc-channel-row">
+          <span class="pc-channel-label">B</span>
+          <div class="pc-channel-bar-wrap">
+            <div id="pc-bar-b" class="pc-channel-bar" style="background:#60a5fa; width:0%;"></div>
           </div>
-          <div class="pc-channel-row">
-            <span class="pc-channel-label">G</span>
-            <div class="pc-channel-bar-wrap">
-              <div id="pc-bar-g" class="pc-channel-bar" style="background:#4ade80; width:0%;"></div>
-            </div>
-            <input id="pc-g" class="pc-channel-num" type="number" min="0" max="255" value="0">
-          </div>
-          <div class="pc-channel-row">
-            <span class="pc-channel-label">B</span>
-            <div class="pc-channel-bar-wrap">
-              <div id="pc-bar-b" class="pc-channel-bar" style="background:#60a5fa; width:0%;"></div>
-            </div>
-            <input id="pc-b" class="pc-channel-num" type="number" min="0" max="255" value="0">
-          </div>
+          <input id="pc-b" class="pc-channel-num" type="number" min="0" max="255" value="0">
         </div>
       </div>
 
@@ -452,8 +526,8 @@
 
     <!-- Right Panel (tool strip — disabled in Phase 1) -->
     <div id="right-panel">
-      <button class="tool-btn" disabled title="Marquee (M)">&#9645;</button>
-      <button class="tool-btn" disabled title="Wand (W)">&#10022;</button>
+      <button class="tool-btn" data-tool="marquee" title="Marquee (M)">&#9645;</button>
+      <button class="tool-btn" data-tool="wand" title="Wand (W)">&#10022;</button>
       <div class="tool-sep"></div>
       <button class="tool-btn" disabled title="Move (V)">&#10021;</button>
       <div class="tool-sep"></div>
@@ -576,20 +650,6 @@
       const hexNH = hex.slice(1);  // 6-digit without '#'
       const rgb   = 'rgb(' + r + ',' + g + ',' + b + ')';
 
-      // Style A
-      const paS = document.getElementById('pa-swatch'); if (paS) paS.style.background = rgb;
-      const paH = document.getElementById('pa-hex');    if (paH) paH.value = hexNH;
-      const paR = document.getElementById('pa-r');      if (paR) paR.value = r;
-      const paG = document.getElementById('pa-g');      if (paG) paG.value = g;
-      const paB = document.getElementById('pa-b');      if (paB) paB.value = b;
-
-      // Style B
-      const pbS = document.getElementById('pb-swatch'); if (pbS) pbS.style.background = rgb;
-      const pbH = document.getElementById('pb-hex');    if (pbH) pbH.value = hex;
-      const pbR = document.getElementById('pb-r');      if (pbR) pbR.value = r;
-      const pbG = document.getElementById('pb-g');      if (pbG) pbG.value = g;
-      const pbB = document.getElementById('pb-b');      if (pbB) pbB.value = b;
-
       // Style C
       const pcH = document.getElementById('pc-hex');
       if (pcH) {
@@ -604,7 +664,8 @@
       const brR = document.getElementById('pc-bar-r');  if (brR) brR.style.width = (r / 255 * 100).toFixed(1) + '%';
       const brG = document.getElementById('pc-bar-g');  if (brG) brG.style.width = (g / 255 * 100).toFixed(1) + '%';
       const brB = document.getElementById('pc-bar-b');  if (brB) brB.style.width = (b / 255 * 100).toFixed(1) + '%';
-      const pcHash = document.querySelector('#picker-body-c .pc-hash');
+      // "#" 前缀跟随当前前景色，而不是固定主题色
+      const pcHash = document.querySelector('.pc-hash');
       if (pcHash) {
         pcHash.style.background = rgb;
       }
@@ -631,15 +692,6 @@
       _syncLock = false;
     }
 
-    // ── Picker style switcher ─────────────────────────────────────────────────
-    function setPickerStyle(s) {
-      document.getElementById('color-picker-panel').dataset.style = s;
-      document.querySelectorAll('.picker-style-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.ps === s);
-      });
-      try { localStorage.setItem('pickerStyle', s); } catch (e) {}
-    }
-
     // ── EditorState — Single Source of Truth ─────────────────────────────────
     // Source: CLAUDE.md "EditorState" section / RESEARCH.md Pattern 4
     const EditorState = {
@@ -655,8 +707,10 @@
         eraserPixelPerfect: false,
         bucketTolerance: 15, wandTolerance: 15,
         contiguous: true,
+        wandContiguous: true,
       },
       selection: null,            // null | {x, y, w, h} in canvas pixels
+      selectionMask: null,        // Uint8Array, length = width*height; 1=selected, 0=not
       selectionPixels: null,      // Uint8ClampedArray for move/transform
       transformState: null,
       history: [],                // Uint8ClampedArray snapshots
@@ -677,7 +731,29 @@
 
     // ── Tool activation ───────────────────────────────────────────────────────
     function setActiveTool(name) {
-      // Save prevTool before activating eyedropper so Escape/pick can restore it
+      // EyeDropper API: if browser supports it, open OS-level color picker.
+      // Picks from anywhere on screen — UI panels, other apps, outside browser.
+      // Falls back to canvas-only eyedropper when API is unavailable (Firefox/Safari).
+      if (name === 'eyedropper' && window.EyeDropper && EditorState.activeTool !== 'eyedropper') {
+        const prevTool = EditorState.activeTool;
+        const ep = new window.EyeDropper();
+        ep.open().then(result => {
+          const h = result.sRGBHex.replace('#', '');
+          EditorState.foregroundColor = [
+            parseInt(h.slice(0, 2), 16),
+            parseInt(h.slice(2, 4), 16),
+            parseInt(h.slice(4, 6), 16),
+            255,
+          ];
+          syncColorUI();
+          setActiveTool(prevTool);
+        }).catch(() => {
+          setActiveTool(prevTool);  // cancelled — restore
+        });
+        return;
+      }
+
+      // Canvas-only eyedropper fallback (or API already active)
       if (name === 'eyedropper' && EditorState.activeTool !== 'eyedropper') {
         EditorState._prevTool = EditorState.activeTool;
       }
@@ -686,7 +762,8 @@
         btn.classList.toggle('tool-btn-active', btn.dataset.tool === name);
       });
       // Show/hide tool settings panels
-      const panelIds = ['tool-settings-pencil', 'tool-settings-eraser', 'tool-settings-bucket'];
+      const panelIds = ['tool-settings-pencil', 'tool-settings-eraser', 'tool-settings-bucket',
+                        'tool-settings-marquee', 'tool-settings-wand'];
       panelIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
@@ -702,6 +779,111 @@
     let pixelCtx = null;
     let selCtx = null;
     let cursorCtx = null;
+
+    // ── Selection state ───────────────────────────────────────────────────────
+    let antsRafId = null;
+    let antsDashOffset = 0;
+    let _antsPath = null;  // Path2D cache; rebuilt on mask change, only offset animates
+
+    function snapToGrid(v, gridSize) {
+      if (gridSize <= 1) return v;
+      return Math.round(v / gridSize) * gridSize;
+    }
+
+    function updateSelectionUI() {
+      const hasSelection = !!EditorState.selectionMask;
+      const btnDeselect = document.getElementById('btn-deselect');
+      const btnInverse  = document.getElementById('btn-inverse');
+      if (btnDeselect) btnDeselect.style.display = hasSelection ? '' : 'none';
+      if (btnInverse)  btnInverse.style.display  = hasSelection ? '' : 'none';
+    }
+
+    function clearSelection() {
+      EditorState.selectionMask = null;
+      EditorState.selection = null;
+      if (antsRafId) { cancelAnimationFrame(antsRafId); antsRafId = null; }
+      _antsPath = null;
+      if (selCtx) selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+      updateSelectionUI();
+    }
+
+    function computeBoundingBox(mask, W, H) {
+      let minX = W, minY = H, maxX = -1, maxY = -1;
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          if (mask[x + y * W]) {
+            if (x < minX) minX = x; if (y < minY) minY = y;
+            if (x > maxX) maxX = x; if (y > maxY) maxY = y;
+          }
+        }
+      }
+      if (maxX === -1) return null;
+      return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+    }
+
+    function setSelection(mask, bbox) {
+      EditorState.selectionMask = mask;
+      EditorState.selection = bbox;
+      _antsPath = null;  // force Path2D rebuild
+      rebuildAntsPath(mask, EditorState.width, EditorState.height);
+      updateSelectionUI();
+      scheduleAnts();
+    }
+
+    function isSelectedPixel(x, y) {
+      if (!EditorState.selectionMask) return true;  // no selection → all pixels writable
+      const bb = EditorState.selection;
+      if (!bb || x < bb.x || x >= bb.x + bb.w || y < bb.y || y >= bb.y + bb.h) return false;
+      return EditorState.selectionMask[x + y * EditorState.width] === 1;
+    }
+
+    function unionMasks(existingMask, newMask, totalPixels) {
+      if (!existingMask) return newMask;
+      const result = new Uint8Array(totalPixels);
+      for (let i = 0; i < totalPixels; i++)
+        result[i] = existingMask[i] | newMask[i];
+      return result;
+    }
+
+    function invertSelection() {}  // stub — Plan 03 will replace with real implementation
+
+    function rebuildAntsPath(mask, W, H) {
+      _antsPath = new Path2D();
+      for (let y = 0; y < H; y++) {
+        for (let x = 0; x < W; x++) {
+          if (!mask[x + y * W]) continue;
+          if (y === 0   || !mask[x + (y-1) * W]) { _antsPath.moveTo(x, y);   _antsPath.lineTo(x+1, y);   }
+          if (y === H-1 || !mask[x + (y+1) * W]) { _antsPath.moveTo(x, y+1); _antsPath.lineTo(x+1, y+1); }
+          if (x === 0   || !mask[(x-1) + y * W]) { _antsPath.moveTo(x, y);   _antsPath.lineTo(x, y+1);   }
+          if (x === W-1 || !mask[(x+1) + y * W]) { _antsPath.moveTo(x+1, y); _antsPath.lineTo(x+1, y+1); }
+        }
+      }
+    }
+
+    function drawAnts() {
+      if (!EditorState.selectionMask || !_antsPath) { antsRafId = null; return; }
+      const dpr = window.devicePixelRatio || 1;
+      selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+      selCtx.save();
+      selCtx.scale(dpr, dpr);
+      selCtx.lineWidth = 1;
+      selCtx.setLineDash([4, 4]);
+      selCtx.strokeStyle = '#ffffff';
+      selCtx.lineDashOffset = antsDashOffset;
+      selCtx.stroke(_antsPath);
+      selCtx.strokeStyle = '#000000';
+      selCtx.lineDashOffset = antsDashOffset + 4;
+      selCtx.stroke(_antsPath);
+      selCtx.restore();
+      antsDashOffset = (antsDashOffset - 1 + 8) % 8;
+      antsRafId = requestAnimationFrame(drawAnts);
+    }
+
+    function scheduleAnts() {
+      if (antsRafId) { cancelAnimationFrame(antsRafId); antsRafId = null; }
+      antsDashOffset = 0;
+      antsRafId = requestAnimationFrame(drawAnts);
+    }
 
     // ── History (undo/redo) ───────────────────────────────────────────────────
 
@@ -1144,6 +1326,8 @@
         eraser:     { onDown(x,y,e){}, onMove(x,y,e){}, onUp(x,y,e){}, onCursor(x,y){} },
         bucket:     { onDown(x,y,e){}, onMove(x,y,e){}, onUp(x,y,e){}, onCursor(x,y){} },
         eyedropper: { onDown(x,y,e){}, onMove(x,y,e){}, onUp(x,y,e){}, onCursor(x,y){} },  // replaced below
+        marquee:    { onDown(x,y,e){}, onMove(x,y,e){}, onUp(x,y,e){}, onCursor(x,y){} },  // replaced below
+        wand:       { onDown(x,y,e){}, onMove(x,y,e){}, onUp(x,y,e){}, onCursor(x,y){} },  // Phase 05-02
       };
       let isDrawing = false;
 
@@ -1278,8 +1462,6 @@
         });
       }
 
-      bindHexInput('pa-hex'); bindRgbGroup('pa-r', 'pa-g', 'pa-b'); bindCopyBtn('pa-copy');
-      bindHexInput('pb-hex'); bindRgbGroup('pb-r', 'pb-g', 'pb-b'); bindCopyBtn('pb-copy');
       bindHexInput('pc-hex'); bindRgbGroup('pc-r', 'pc-g', 'pc-b'); bindCopyBtn('pc-copy');
 
       // Style C RGB 数值：支持按住输入框左右拖动来调整数值
@@ -1325,16 +1507,11 @@
 
       ['pc-r', 'pc-g', 'pc-b'].forEach(attachPcChannelDrag);
 
-      // Style switcher init
-      document.querySelectorAll('.picker-style-btn').forEach(btn => {
-        btn.addEventListener('click', () => setPickerStyle(btn.dataset.ps));
-      });
-      setPickerStyle(localStorage.getItem('pickerStyle') || 'a');
       // 进入页面时立即用当前前景色同步所有 UI（含 HEX 区域描边 / 背景、复制按钮描边，以及色轮 / 调色盘指针）
       syncColorUI();
 
       // 点击 Style C 的 "#" 前缀时，自动切换到 Eyedropper 工具，方便快速取色
-      const pcHashEl = document.querySelector('#picker-body-c .pc-hash');
+      const pcHashEl = document.querySelector('.pc-hash');
       if (pcHashEl) {
         pcHashEl.addEventListener('click', () => {
           setActiveTool('eyedropper');
@@ -1375,6 +1552,22 @@
       document.getElementById('opt-contiguous').addEventListener('change', e => {
         EditorState.toolOptions.contiguous = e.target.checked;
       });
+
+      // Wand tolerance
+      const optWandTol = document.getElementById('opt-wand-tolerance');
+      const optWandCont = document.getElementById('opt-wand-contiguous');
+      if (optWandTol) optWandTol.addEventListener('input', () => {
+        EditorState.toolOptions.wandTolerance = parseInt(optWandTol.value) || 0;
+      });
+      if (optWandCont) optWandCont.addEventListener('change', () => {
+        EditorState.toolOptions.wandContiguous = optWandCont.checked;
+      });
+
+      // Deselect and Inverse buttons
+      const btnDeselect = document.getElementById('btn-deselect');
+      const btnInverse  = document.getElementById('btn-inverse');
+      if (btnDeselect) btnDeselect.addEventListener('click', () => clearSelection());
+      if (btnInverse)  btnInverse.addEventListener('click', () => invertSelection());
 
       // ── Pencil tool implementation ────────────────────────────────────────────
       let _pencilStamp = null;
@@ -1554,6 +1747,8 @@
           if (e.key === 'e' || e.key === 'E') setActiveTool('eraser');
           if (e.key === 'g' || e.key === 'G') setActiveTool('bucket');
           if (e.key === 'i' || e.key === 'I') setActiveTool('eyedropper');
+          if (e.key === 'm' || e.key === 'M') setActiveTool('marquee');
+          if (e.key === 'w' || e.key === 'W') setActiveTool('wand');
         }
         // Eyedropper cancel: Escape restores _prevTool
         if (e.key === 'Escape' && EditorState.activeTool === 'eyedropper') {
