@@ -128,7 +128,13 @@ Plans:
   2. Clicking Magic Wand (W) selects a region of similar-color pixels; Tolerance and Contiguous options visibly change the selection extent
   3. While a selection is active, pencil and eraser strokes are clipped to the selected region
   4. Pressing Cmd+D deselects; Shift+Cmd+I inverts the selection; both commands appear in the top bar while a selection is active
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — 选区数据模型 + HTML 脚手架 + Rectangle Marquee 工具（网格吸附、拖拽预览、mask 提交）
+- [ ] 05-02-PLAN.md — Magic Wand 工具（BFS 产生像素 mask）+ 完成顶栏 Deselect/Inverse 按钮绑定
+- [ ] 05-03-PLAN.md — 工具裁剪（Pencil/Eraser/Bucket 受选区约束）+ Delete/Option+Delete 快捷键
+- [ ] 05-04-PLAN.md — 浏览器目视验证检查点（Phase 5 成功标准全部确认）
 
 ### Phase 6: Transform
 **Goal**: User can move, scale, and rotate the contents of a selection using pixel-art-safe algorithms
