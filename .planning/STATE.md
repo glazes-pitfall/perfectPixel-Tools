@@ -123,6 +123,7 @@ None yet.
 |---|-------------|------|--------|-----------|
 | 1 | fix-editor-zoom-trackpad-pan | 2026-03-02 | b69551f | [1-fix-editor-zoom-trackpad-pan](./quick/1-fix-editor-zoom-trackpad-pan/) |
 | 2 | fix-zoom-center-pan-bounds-sensitivity | 2026-03-02 | f10ea8c | [2-fix-zoom-center-pan-bounds-sensitivity](./quick/2-fix-zoom-center-pan-bounds-sensitivity/) |
+| 3 | applypalette-undo | 2026-03-03 | 350f218 | [3-applypalette-undo](./quick/3-applypalette-undo/) |
 
 ### Blockers/Concerns
 
