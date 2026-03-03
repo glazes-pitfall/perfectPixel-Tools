@@ -1110,6 +1110,7 @@
     let _eyedropperAborter = null;
 
     // ── Selection state ───────────────────────────────────────────────────────
+    const SEL_PAD = 2; // 屏幕像素 — selCanvas 每侧额外空间，使外描边不被裁剪
     let antsRafId = null;
 
     function snapToGrid(v, gridSize) {
@@ -1129,7 +1130,10 @@
       EditorState.selectionMask = null;
       EditorState.selection = null;
       if (antsRafId) { cancelAnimationFrame(antsRafId); antsRafId = null; }
-      if (selCtx) selCtx.clearRect(0, 0, EditorState.width, EditorState.height);
+      if (selCtx) {
+        const _pad = SEL_PAD / (window.devicePixelRatio || 1);
+        selCtx.clearRect(-_pad, -_pad, EditorState.width + _pad * 2, EditorState.height + _pad * 2);
+      }
       updateSelectionUI();
     }
 
@@ -1397,15 +1401,25 @@
 
       // overlay canvases: DPR-scaled for crisp rendering on Retina displays
       const dpr = window.devicePixelRatio || 1;
-      [selCanvas, cursorCanvas].forEach(canvas => {
-        canvas.width  = width  * dpr;
-        canvas.height = height * dpr;
-        canvas.style.width  = width  + 'px';
-        canvas.style.height = height + 'px';
-      });
-      selCtx    = selCanvas.getContext('2d');
-      cursorCtx = cursorCanvas.getContext('2d');
+
+      // selCanvas: 每侧扩展 SEL_PAD 屏幕像素，外描边不被裁剪
+      const selCSSPad = SEL_PAD / dpr;  // 逻辑像素 padding（CSS 单位）
+      selCanvas.width  = width  * dpr + SEL_PAD * 2;
+      selCanvas.height = height * dpr + SEL_PAD * 2;
+      selCanvas.style.width  = (width  + selCSSPad * 2) + 'px';
+      selCanvas.style.height = (height + selCSSPad * 2) + 'px';
+      selCanvas.style.top  = (-selCSSPad) + 'px';
+      selCanvas.style.left = (-selCSSPad) + 'px';
+      selCtx = selCanvas.getContext('2d');
       selCtx.scale(dpr, dpr);
+      selCtx.translate(selCSSPad, selCSSPad); // (0,0) 映射到图像左上角
+
+      // cursorCanvas: 保持原尺寸（接收 pointer events，不需要 padding）
+      cursorCanvas.width  = width  * dpr;
+      cursorCanvas.height = height * dpr;
+      cursorCanvas.style.width  = width  + 'px';
+      cursorCanvas.style.height = height + 'px';
+      cursorCtx = cursorCanvas.getContext('2d');
       cursorCtx.scale(dpr, dpr);
 
       // zoom-container needs explicit size so scrolling works correctly
@@ -2538,7 +2552,8 @@
       }
 
       function _marqueeDrawPreview(rx, ry, rw, rh) {
-        selCtx.clearRect(0, 0, EditorState.width, EditorState.height);
+        const _pad = SEL_PAD / (window.devicePixelRatio || 1);
+        selCtx.clearRect(-_pad, -_pad, EditorState.width + _pad * 2, EditorState.height + _pad * 2);
         if (rw <= 0 || rh <= 0) return;
 
         // 边界四条边的像素坐标列表（画布逻辑像素）
@@ -2574,7 +2589,8 @@
           if (!e.shiftKey) {
             // Cancel existing ants but don't call clearSelection — we'll set a new one on up
             if (antsRafId) { cancelAnimationFrame(antsRafId); antsRafId = null; }
-            selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+            const _pad = SEL_PAD / (window.devicePixelRatio || 1);
+            selCtx.clearRect(-_pad, -_pad, EditorState.width + _pad * 2, EditorState.height + _pad * 2);
           }
           _marqueeStartX = x; _marqueeStartY = y;
           _marqueeCurrentX = x; _marqueeCurrentY = y;
