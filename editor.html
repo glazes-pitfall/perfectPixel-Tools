@@ -1819,7 +1819,6 @@
     // ── PAL-04: 破坏性应用色卡 — 直接写入 EditorState.pixels + pushHistory ──
     function applyPalette() {
       if (!EditorState.pixels || currentPalette.length === 0) return;
-      pushHistory();  // save-before（瞬时操作，参照 paint bucket 模式）
       const px = EditorState.pixels;
       const pal = currentPalette;
       for (let i = 0; i < px.length; i += 4) {
@@ -1834,6 +1833,7 @@
         }
       }
       flushPixels();
+      pushHistory();  // save-after: 应用后压入，保证与铅笔各占独立 undo 步骤
       palShowStatus('色卡已应用', 'success');
     }
 
