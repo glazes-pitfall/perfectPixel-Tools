@@ -1769,6 +1769,10 @@
       return [...SNAP_LEVELS].reverse().find(l => l < current - 0.01) ?? SNAP_LEVELS[0];
     }
 
+    // B2 fix: hook set by DOMContentLoaded to redraw transform overlay on zoom change.
+    // _drawTransformUI is defined inside DOMContentLoaded; applyZoom is in outer scope.
+    let _onZoomChanged = null;
+
     /**
      * Apply a new zoom level, keeping the given viewport point stationary.
      * Uses CSS transform: scale() on #zoom-container. Range: 0.25x–64x (fractional).
@@ -1798,6 +1802,8 @@
       clampScroll(area);
       const display = Number.isInteger(newZoom) ? newZoom + 'x' : newZoom.toFixed(1) + 'x';
       document.getElementById('zoom-display').textContent = display;
+      // B2 fix: redraw transform overlay when zoom changes
+      if (_onZoomChanged) _onZoomChanged();
     }
 
     /**
@@ -3457,6 +3463,13 @@
       }
 
       // ── END Tool dispatch ─────────────────────────────────────────────────────
+
+      // B2 fix: wire zoom hook — redraws transform overlay when applyZoom is called.
+      // _drawTransformUI is defined above in this DOMContentLoaded closure; _onZoomChanged
+      // is declared in outer scope so applyZoom (also outer scope) can call it.
+      _onZoomChanged = () => {
+        if (EditorState.transformState) _drawTransformUI();
+      };
 
       // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
       // canvasArea: receives wheel events (entire area incl. result panel)
