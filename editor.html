@@ -3039,14 +3039,16 @@
             const E3 = ((oy+1) * OW + ox + 1) * 4;  // bottom-right
 
             if (!colorEq(pixels, B, H) && !colorEq(pixels, D, F)) {
-              // E0 = D==B ? D : E
-              copyPixel(colorEq(pixels, D, B) ? D : E, E0);
-              // E1 = B==F ? F : E
-              copyPixel(colorEq(pixels, B, F) ? F : E, E1);
-              // E2 = D==H ? D : E
-              copyPixel(colorEq(pixels, D, H) ? D : E, E2);
-              // E3 = H==F ? F : E
-              copyPixel(colorEq(pixels, H, F) ? F : E, E3);
+              // Scale2x corner rules: only extend a neighbor color when it is opaque.
+              // If the matching pair is transparent (e.g. both D and B have alpha=0),
+              // colorEq returns true but we must NOT inject transparency into the
+              // center pixel's sub-block — use E (center) instead.
+              // Without this guard, corner pixels at the selection boundary get
+              // transparent sub-pixels that corrupt RotSprite output after rotation.
+              copyPixel(colorEq(pixels, D, B) && pixels[D+3] > 0 ? D : E, E0);
+              copyPixel(colorEq(pixels, B, F) && pixels[B+3] > 0 ? F : E, E1);
+              copyPixel(colorEq(pixels, D, H) && pixels[D+3] > 0 ? D : E, E2);
+              copyPixel(colorEq(pixels, H, F) && pixels[H+3] > 0 ? F : E, E3);
             } else {
               copyPixel(E, E0); copyPixel(E, E1);
               copyPixel(E, E2); copyPixel(E, E3);
@@ -3218,36 +3220,9 @@
         _drawTransformUI();
       }
 
-      // _tightCrop: scan pixels for the smallest bbox containing all non-transparent pixels.
-      // Returns { pixels, w, h, offX, offY } or null if fully transparent.
-      function _tightCrop(pixels, w, h) {
-        let minX = w, minY = h, maxX = -1, maxY = -1;
-        for (let y = 0; y < h; y++) {
-          for (let x = 0; x < w; x++) {
-            if (pixels[(y * w + x) * 4 + 3] > 0) {
-              if (x < minX) minX = x;
-              if (x > maxX) maxX = x;
-              if (y < minY) minY = y;
-              if (y > maxY) maxY = y;
-            }
-          }
-        }
-        if (maxX < 0) return null;
-        const cw = maxX - minX + 1, ch = maxY - minY + 1;
-        const out = new Uint8ClampedArray(cw * ch * 4);
-        for (let y = 0; y < ch; y++) {
-          for (let x = 0; x < cw; x++) {
-            const si = ((minY + y) * w + (minX + x)) * 4, di = (y * cw + x) * 4;
-            out[di] = pixels[si]; out[di+1] = pixels[si+1];
-            out[di+2] = pixels[si+2]; out[di+3] = pixels[si+3];
-          }
-        }
-        return { pixels: out, w: cw, h: ch, offX: minX, offY: minY };
-      }
-
       // _finalizeRotationBbox: called ONCE on pointerup after a rotation drag.
-      // Runs RotSprite then tight-crops the result so the selection border
-      // matches actual visible pixels exactly (no transparent padding).
+      // Expands floatW/H to the actual rotated bounding box (no clipping),
+      // repositions so _rotatePivot stays visually fixed.
       function _finalizeRotationBbox() {
         const ts = EditorState.transformState;
         if (!ts || ts.angleDeg === 0) return;
@@ -3269,25 +3244,12 @@
 
         // Pivot guaranteed to exist (was set in rotation onDown)
         const piv = ts._rotatePivot || { x: Math.round(ts.floatX + ts.floatW / 2), y: Math.round(ts.floatY + ts.floatH / 2) };
-        const baseX = Math.round(piv.x - result.w / 2);
-        const baseY = Math.round(piv.y - result.h / 2);
-
-        // Tight-crop: remove transparent padding rows/columns from RotSprite output
-        const crop = _tightCrop(result.pixels, result.w, result.h);
-        if (crop) {
-          ts.floatPixels = crop.pixels;
-          ts.floatW      = crop.w;
-          ts.floatH      = crop.h;
-          ts.floatX      = baseX + crop.offX;
-          ts.floatY      = baseY + crop.offY;
-        } else {
-          ts.floatPixels = result.pixels;
-          ts.floatW      = result.w;
-          ts.floatH      = result.h;
-          ts.floatX      = baseX;
-          ts.floatY      = baseY;
-        }
-        ts._borderRect = null;  // tight bbox is now the actual handle boundary
+        ts.floatPixels = result.pixels;
+        ts.floatW      = result.w;
+        ts.floatH      = result.h;
+        ts.floatX      = Math.round(piv.x - result.w / 2);
+        ts.floatY      = Math.round(piv.y - result.h / 2);
+        ts._borderRect = null;  // expanded bbox is now the actual handle boundary
 
         _drawTransformUI();
       }
