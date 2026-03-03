@@ -185,7 +185,7 @@ Plans:
 **Goal:** 修复选区渲染的 DPR 双重应用 Bug（导致蚂蚁线 4px 宽粗线 + 紫灰色混色）；切换为 globalCompositeOperation='difference' 单白色反色描边，任何背景均可见
 **Requirements**: VISUAL-FIX-01
 **Depends on:** Phase 5
-**Plans:** 1/1 plans complete
+**Plans:** 2/2 plans complete
 
 **Success Criteria** (what must be TRUE):
   1. 蚂蚁线线宽为 1 逻辑像素（DPR=2 Retina 屏上为 2 物理像素），不再出现 4px 宽粗线
@@ -233,7 +233,7 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 | 3. Core Tools | 4/4 | Complete | 2026-03-03 |
 | 4. Palette Panel | 3/3 | Complete | 2026-03-03 |
 | 4.1. Phase 4 返工 (INSERTED) | 1/2 | In Progress|  |
-| 4.2. 色卡面板 UI 整理 (INSERTED) | 1/2 | In Progress|  |
+| 4.2. 色卡面板 UI 整理 (INSERTED) | 1/2 | Complete    | 2026-03-03 |
 | 5. Selection Tools | 3/4 | In Progress | - |
 | 5.1. Selection Visual Polish (INSERTED) | 0/1 | Not started | - |
 | 6. Transform | 0/TBD | Not started | - |
