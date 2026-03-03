@@ -1023,7 +1023,24 @@
       return result;
     }
 
-    function invertSelection() {}  // stub — Plan 03 will replace with real implementation
+    function invertSelection() {
+      const W = EditorState.width, H = EditorState.height;
+      const total = W * H;
+      if (!EditorState.selectionMask) {
+        // No selection → invert = select all pixels
+        const allMask = new Uint8Array(total).fill(1);
+        setSelection(allMask, { x: 0, y: 0, w: W, h: H });
+      } else {
+        const newMask = new Uint8Array(total);
+        for (let i = 0; i < total; i++) newMask[i] = EditorState.selectionMask[i] ? 0 : 1;
+        const bbox = computeBoundingBox(newMask, W, H);
+        if (bbox) {
+          setSelection(newMask, bbox);
+        } else {
+          clearSelection();  // inverting a full-canvas selection → empty
+        }
+      }
+    }
 
     function rebuildAntsPath(mask, W, H) {
       _antsPath = new Path2D();
@@ -2328,6 +2345,16 @@
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') {
           e.preventDefault();
           redo();
+        }
+        // Cmd+D → Deselect
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'd') {
+          e.preventDefault();
+          clearSelection();
+        }
+        // Shift+Cmd+I → Inverse selection
+        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'i') {
+          e.preventDefault();
+          invertSelection();
         }
         // Tool shortcuts (no modifier — guard against text inputs handled above)
         if (!e.ctrlKey && !e.metaKey) {
