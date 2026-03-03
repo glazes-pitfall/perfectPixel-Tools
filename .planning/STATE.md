@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 Phase: 4 of 7 (Palette Panel) + Phase 5 (Selection Tools) running in parallel
 Plan: Phase 4 Plan 3/3 checkpoint reached (awaiting human verification); Phase 5 Plan 3/4 complete
 Status: Phase 4 Plan 03 checkpoint — awaiting human verification of PAL-01, PAL-02, UI-03, web_ui.html deletion; Phase 5 Plan 03 done
-Last activity: 2026-03-03 - Completed quick task 3: applyPalette save-after fix — undo steps are now independent
+Last activity: 2026-03-03 - Completed quick task 4: three mapping modes (vector/perceptual/swap) + LAB color functions
 
 Progress: [████████████] 56%
 
@@ -124,6 +124,7 @@ None yet.
 | 1 | fix-editor-zoom-trackpad-pan | 2026-03-02 | b69551f | [1-fix-editor-zoom-trackpad-pan](./quick/1-fix-editor-zoom-trackpad-pan/) |
 | 2 | fix-zoom-center-pan-bounds-sensitivity | 2026-03-02 | f10ea8c | [2-fix-zoom-center-pan-bounds-sensitivity](./quick/2-fix-zoom-center-pan-bounds-sensitivity/) |
 | 3 | applypalette-undo | 2026-03-03 | 350f218 | [3-applypalette-undo](./quick/3-applypalette-undo/) |
+| 4 | 4-3-lab mapping modes | 2026-03-03 | 4d396f5 | [4-3-lab](./quick/4-3-lab/) |
 
 ### Blockers/Concerns
 
