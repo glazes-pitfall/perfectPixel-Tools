@@ -2487,19 +2487,14 @@
       }
 
       function _marqueeDrawPreview(rx, ry, rw, rh) {
-        const dpr = window.devicePixelRatio || 1;
-        selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
-        selCtx.save();
-        selCtx.scale(dpr, dpr);
+        selCtx.clearRect(0, 0, EditorState.width, EditorState.height);
         selCtx.lineWidth = 1;
         selCtx.setLineDash([4, 4]);
+        selCtx.globalCompositeOperation = 'difference';
         selCtx.strokeStyle = '#ffffff';
         selCtx.lineDashOffset = 0;
         selCtx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);
-        selCtx.strokeStyle = '#000000';
-        selCtx.lineDashOffset = 4;
-        selCtx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);
-        selCtx.restore();
+        selCtx.globalCompositeOperation = 'source-over';
       }
 
       tools.marquee = {
