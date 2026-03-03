@@ -133,14 +133,6 @@
     #zoom-scroll-content::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
     #zoom-scroll-content::-webkit-scrollbar-corner { background: var(--surface); }
 
-    /* Palette result panel scrollbar */
-    #palette-result-panel::-webkit-scrollbar { width: 6px; }
-    #palette-result-panel::-webkit-scrollbar-track { background: transparent; }
-    #palette-result-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-    /* .btn-download inside palette result panel */
-    #palette-result-panel .btn-download { display: block; }
-
     /* ── Zoom container (CSS transform target; contains 3-canvas stack) ────── */
     #zoom-container {
       position: absolute;
@@ -582,34 +574,6 @@
               </div>
             </div>
 
-            <!-- Mapping mode -->
-            <div>
-              <div class="section-label">映射模式</div>
-              <div class="mode-group">
-                <label class="mode-option">
-                  <input type="radio" name="mappingMode" value="vector" checked>
-                  <div>
-                    <div class="mode-label">向量匹配</div>
-                    <div class="mode-desc">RGB 欧氏距离，最直接</div>
-                  </div>
-                </label>
-                <label class="mode-option" id="modeSwapOption">
-                  <input type="radio" name="mappingMode" value="swap">
-                  <div>
-                    <div class="mode-label">色卡替换</div>
-                    <div class="mode-desc">先量化图像生成中间调色板，防止相近色扎堆映射</div>
-                  </div>
-                </label>
-                <label class="mode-option">
-                  <input type="radio" name="mappingMode" value="perceptual">
-                  <div>
-                    <div class="mode-label">感知匹配</div>
-                    <div class="mode-desc">LAB 色彩空间，更符合人眼感知</div>
-                  </div>
-                </label>
-              </div>
-            </div>
-
             <button class="btn btn-primary" id="applyPaletteBtn" disabled>应用色卡</button>
 
           </div><!-- /palette-body -->
@@ -674,24 +638,6 @@
             <canvas id="cursor-canvas"></canvas>
           </div>
         </div>
-      </div>
-      <!-- PAL-02: Palette result panel (side-by-side diff) -->
-      <div id="palette-result-panel" style="display:none; flex-direction:column; gap:8px; padding:12px; flex-shrink:0; border-left:1px solid var(--border); overflow-y:auto; min-width:280px; background:var(--surface);">
-        <div style="font-size:12px; font-weight:600; color:var(--text-muted);">色卡结果</div>
-        <div style="display:flex; flex-direction:column; gap:16px;">
-          <div>
-            <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">原图</div>
-            <img id="pal-result-original" style="image-rendering:pixelated; max-width:240px; display:block; border:1px solid var(--border); border-radius:4px;">
-            <a id="pal-dl-orig-exact" class="btn-download" style="display:block; margin-top:4px;" download="original.png">&#8595; 下载精准版</a>
-          </div>
-          <div>
-            <div style="font-size:11px; color:var(--text-muted); margin-bottom:4px;">色卡映射</div>
-            <img id="pal-result-mapped" style="image-rendering:pixelated; max-width:240px; display:block; border:1px solid var(--border); border-radius:4px;">
-            <a id="pal-dl-mapped-exact" class="btn-download" style="display:block; margin-top:4px;" download="output_palette.png">&#8595; 下载精准版</a>
-            <a id="pal-dl-mapped-scaled" class="btn-download" style="display:block; margin-top:4px;" download="output_palette_scaled.png">&#8595; 下载放大版</a>
-          </div>
-        </div>
-        <button id="pal-result-close" class="btn btn-ghost" style="font-size:11px; margin-top:4px; width:100%;">关闭结果</button>
       </div>
     </div>
 
@@ -2564,19 +2510,6 @@
           btn.classList.add('active');
           const pane = document.getElementById('tab-' + btn.dataset.tab);
           if (pane) pane.classList.add('active');
-          // Show/hide swap mode option based on active tab
-          const swapOpt = document.getElementById('modeSwapOption');
-          if (swapOpt) {
-            const isGenerate = btn.dataset.tab === 'generate';
-            swapOpt.style.display = isGenerate ? 'none' : '';
-            if (isGenerate) {
-              const swapRadio = document.querySelector('input[name=mappingMode][value="swap"]');
-              if (swapRadio && swapRadio.checked) {
-                const vectorRadio = document.querySelector('input[name=mappingMode][value="vector"]');
-                if (vectorRadio) vectorRadio.checked = true;
-              }
-            }
-          }
         });
       });
 
@@ -2800,20 +2733,8 @@
         applyPaletteBtnEl.addEventListener('click', applyPalette);
       }
 
-      // Palette result panel close button
-      const palResultCloseEl = document.getElementById('pal-result-close');
-      if (palResultCloseEl) {
-        palResultCloseEl.addEventListener('click', () => {
-          document.getElementById('palette-result-panel').style.display = 'none';
-        });
-      }
-
       // Initialize saved palettes dropdown on load
       refreshSavedDropdown();
-
-      // Set initial modeSwapOption visibility (generate tab is default active)
-      const swapOptInit = document.getElementById('modeSwapOption');
-      if (swapOptInit) swapOptInit.style.display = 'none';
 
     });
   </script>
