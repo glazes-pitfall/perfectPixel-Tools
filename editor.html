@@ -1222,23 +1222,63 @@
 
     function drawAnts() {
       if (!EditorState.selection) { antsRafId = null; return; }
-      const { x, y, w, h } = EditorState.selection;
+
       const dpr = window.devicePixelRatio || 1;
+      const _pad = SEL_PAD / dpr;  // clearRect 需覆盖 padding 区域
 
-      selCtx.clearRect(0, 0, EditorState.width, EditorState.height);
-      selCtx.setLineDash([]);
+      selCtx.clearRect(-_pad, -_pad, EditorState.width + _pad * 2, EditorState.height + _pad * 2);
       selCtx.globalCompositeOperation = 'source-over';
+      selCtx.setLineDash([]);
 
-      // 500ms 间隔闪烁：亮 / 暗交替
+      // 500ms 闪烁
       const bright = Math.floor(Date.now() / 500) % 2 === 0;
       selCtx.strokeStyle = bright ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.15)';
+      selCtx.lineWidth = 2 / dpr;  // 2 屏幕像素
 
-      // 线宽：2 屏幕像素 = 2/dpr 逻辑坐标（selCtx 已 scale(dpr,dpr)）
-      selCtx.lineWidth = 2 / dpr;
+      const mask = EditorState.selectionMask;
+      const { x: bx, y: by, w: bw, h: bh } = EditorState.selection;
 
-      // 外包线位置：选区外侧，向外扩展 0.5/dpr 个逻辑像素（线宽 1/dpr 各朝一侧）
-      const offset = 1 / dpr;
-      selCtx.strokeRect(x - offset, y - offset, w + offset * 2, h + offset * 2);
+      if (mask) {
+        // 像素轮廓路径：遍历 bounding box，对每个选中像素检测四邻居
+        const W = EditorState.width, H = EditorState.height;
+        const off = 1 / dpr;  // lineWidth/2：使 2px 描边完全落在选区外侧
+        const path = new Path2D();
+
+        for (let py = by; py < by + bh; py++) {
+          for (let px = bx; px < bx + bw; px++) {
+            if (!mask[px + py * W]) continue;  // 未选中像素跳过
+
+            // 上邻居未选中（或越界）→ 画上边
+            if (py === 0 || !mask[px + (py - 1) * W]) {
+              path.moveTo(px - off, py - off);
+              path.lineTo(px + 1 + off, py - off);
+            }
+            // 下邻居未选中（或越界）→ 画下边
+            if (py === H - 1 || !mask[px + (py + 1) * W]) {
+              path.moveTo(px - off, py + 1 + off);
+              path.lineTo(px + 1 + off, py + 1 + off);
+            }
+            // 左邻居未选中（或越界）→ 画左边
+            if (px === 0 || !mask[(px - 1) + py * W]) {
+              path.moveTo(px - off, py - off);
+              path.lineTo(px - off, py + 1 + off);
+            }
+            // 右邻居未选中（或越界）→ 画右边
+            if (px === W - 1 || !mask[(px + 1) + py * W]) {
+              path.moveTo(px + 1 + off, py - off);
+              path.lineTo(px + 1 + off, py + 1 + off);
+            }
+          }
+        }
+        selCtx.stroke(path);
+      } else {
+        // Fallback（无 mask）：bounding box 矩形描边
+        const off = 1 / dpr;
+        selCtx.strokeRect(
+          bx - off, by - off,
+          bw + off * 2, bh + off * 2
+        );
+      }
 
       antsRafId = requestAnimationFrame(drawAnts);
     }
