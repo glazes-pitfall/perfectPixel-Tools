@@ -353,6 +353,7 @@ def editor():
     return send_file(os.path.join(os.path.dirname(__file__), "editor.html"))
 
 
+
 @app.route("/output.png")
 def output_png():
     return send_file(os.path.join(os.path.dirname(__file__), "output.png"))
@@ -415,7 +416,16 @@ def api_generate_palette():
         return jsonify({"error": "No image data"}), 400
 
     try:
-        rgb = b64_to_rgb(image_b64)
+        # Decode with RGBA to avoid transparent pixels being composited to black
+        # by cv2.IMREAD_COLOR, which would inject fake black into the palette.
+        raw_data = base64.b64decode(image_b64)
+        pil_rgba = Image.open(io.BytesIO(raw_data)).convert('RGBA')
+        rgba_arr = np.array(pil_rgba, dtype=np.uint8)
+        alpha_mask = rgba_arr[:, :, 3] >= 128
+        opaque_pixels = rgba_arr[:, :, :3][alpha_mask]   # (N, 3)
+        if opaque_pixels.shape[0] == 0:
+            return jsonify({"error": "No opaque pixels to quantize"}), 400
+        rgb = opaque_pixels.reshape(-1, 1, 3)   # (N, 1, 3) strip — quantizers work on pixel color, not layout
     except Exception as e:
         return jsonify({"error": f"Cannot decode image: {e}"}), 400
 
