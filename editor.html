@@ -2811,6 +2811,56 @@
         };
       }
 
+      // B3 fix: _selCanvasPointerDown — forwards drag events that land outside cursorCanvas
+      // back into the existing tools.move onMove/onUp handlers.
+      // selCanvas covers the full canvas-area (including outside the pixel canvas), so
+      // enabling its pointer-events while transform is active lets the user continue
+      // dragging a float that has been moved outside the canvas boundary.
+      function _selCanvasPointerDown(e) {
+        const ts = EditorState.transformState;
+        if (!ts) return;
+        e.preventDefault();
+
+        const handleIdx = hitTestHandle(e.clientX, e.clientY);
+        if (handleIdx !== null) {
+          // Handle hit — set up handle drag state (mirrors tools.move.onDown handle branch)
+          ts._origFloatPixels  = ts.floatPixels.slice();
+          ts._origFloatW       = ts.floatW;
+          ts._origFloatH       = ts.floatH;
+          ts._dragStartScaleX  = ts.scaleX;
+          ts._dragStartScaleY  = ts.scaleY;
+          ts._dragMode         = 'handle-' + handleIdx;
+          ts._dragStartClientX = e.clientX;
+          ts._dragStartClientY = e.clientY;
+          ts._dragStartFloatX  = ts.floatX;
+          ts._dragStartFloatY  = ts.floatY;
+          const anchorFrac = [[1,1],[0.5,1],[0,1],[1,0.5],[0,0.5],[1,0],[0.5,0],[0,0]];
+          const [ax, ay] = anchorFrac[handleIdx];
+          ts._dragAnchorX     = ts.floatX + ax * ts.floatW;
+          ts._dragAnchorY     = ts.floatY + ay * ts.floatH;
+          ts._dragAnchorFracX = ax;
+          ts._dragAnchorFracY = ay;
+        } else {
+          // No handle — start move drag
+          ts._dragMode         = 'move';
+          ts._dragStartClientX = e.clientX;
+          ts._dragStartClientY = e.clientY;
+          ts._dragStartFloatX  = ts.floatX;
+          ts._dragStartFloatY  = ts.floatY;
+        }
+        selCanvas.setPointerCapture(e.pointerId);
+
+        // Delegate pointermove / pointerup to existing tool handlers
+        function onSelMove(ev) { tools.move.onMove(0, 0, ev); }
+        function onSelUp(ev) {
+          tools.move.onUp(0, 0, ev);
+          selCanvas.removeEventListener('pointermove', onSelMove);
+          selCanvas.removeEventListener('pointerup', onSelUp);
+        }
+        selCanvas.addEventListener('pointermove', onSelMove);
+        selCanvas.addEventListener('pointerup', onSelUp);
+      }
+
       function activateTransform() {
         if (!EditorState.selectionMask || !EditorState.selection) return;
         if (EditorState.transformState) return;  // already active
@@ -2870,6 +2920,10 @@
         // 6. Draw static transform UI + show top-bar
         _drawTransformUI();
         _showTransformTopBar();
+
+        // B3 fix: enable selCanvas pointer capture so dragging outside cursorCanvas works
+        selCanvas.style.pointerEvents = 'auto';
+        selCanvas.addEventListener('pointerdown', _selCanvasPointerDown);
       }
 
       // ── Plan 06-02: scaleNearestNeighbor ─────────────────────────────────────
@@ -3222,6 +3276,9 @@
         clearSelection();
         _hideTransformTopBar();
         _hideDistanceLabel();
+        // B3 fix: disable selCanvas pointer capture now that transform is done
+        selCanvas.style.pointerEvents = 'none';
+        selCanvas.removeEventListener('pointerdown', _selCanvasPointerDown);
       }
 
       function cancelTransform() {
@@ -3234,6 +3291,9 @@
         clearSelection();
         _hideTransformTopBar();
         _hideDistanceLabel();
+        // B3 fix: disable selCanvas pointer capture now that transform is cancelled
+        selCanvas.style.pointerEvents = 'none';
+        selCanvas.removeEventListener('pointerdown', _selCanvasPointerDown);
       }
 
       // ── tools.move ────────────────────────────────────────────────────────────
