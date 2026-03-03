@@ -1119,10 +1119,8 @@
 
     function drawAnts() {
       if (!EditorState.selectionMask || !_antsPath) { antsRafId = null; return; }
-      const dpr = window.devicePixelRatio || 1;
       selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
       selCtx.save();
-      selCtx.scale(dpr, dpr);
       selCtx.lineWidth = 1;
       selCtx.setLineDash([4, 4]);
       selCtx.strokeStyle = '#ffffff';
@@ -2388,10 +2386,8 @@
       }
 
       function _marqueeDrawPreview(rx, ry, rw, rh) {
-        const dpr = window.devicePixelRatio || 1;
         selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
         selCtx.save();
-        selCtx.scale(dpr, dpr);
         selCtx.lineWidth = 1;
         selCtx.setLineDash([4, 4]);
         selCtx.strokeStyle = '#ffffff';
