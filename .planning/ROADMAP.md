@@ -180,6 +180,16 @@ Plans:
 - [ ] 05-03-PLAN.md — 工具裁剪（Pencil/Eraser/Bucket 受选区约束）+ Delete/Option+Delete 快捷键
 - [ ] 05-04-PLAN.md — 浏览器目视验证检查点（Phase 5 成功标准全部确认）
 
+### Phase 05.1: selection visual polish - DPR fix inverse-color preview slow purple-gray ants (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 5
+**Plans:** 1/2 plans executed
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 05.1 to break down)
+
 ### Phase 6: Transform
 **Goal**: User can move, scale, and rotate the contents of a selection using pixel-art-safe algorithms
 **Depends on**: Phase 4 and Phase 5 (both must be complete)
@@ -216,7 +226,7 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 | 3. Core Tools | 4/4 | Complete | 2026-03-03 |
 | 4. Palette Panel | 3/3 | Complete | 2026-03-03 |
 | 4.1. Phase 4 返工 (INSERTED) | 1/2 | In Progress|  |
-| 4.2. 色卡面板 UI 整理 (INSERTED) | 0/2 | Not started | - |
+| 4.2. 色卡面板 UI 整理 (INSERTED) | 1/2 | In Progress|  |
 | 5. Selection Tools | 3/4 | In Progress | - |
 | 6. Transform | 0/TBD | Not started | - |
 | 7. Integration | 0/TBD | Not started | - |

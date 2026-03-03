@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T13:05:38.268Z"
+last_updated: "2026-03-03T15:44:22.119Z"
 progress:
-  total_phases: 6
+  total_phases: 8
   completed_phases: 4
-  total_plans: 18
-  completed_plans: 16
+  total_plans: 20
+  completed_plans: 17
 ---
 
 # Project State
@@ -60,12 +60,14 @@ Progress: [████████████] 56%
 | Phase 04-palette-panel P02 | 25 | 2 tasks | 2 files |
 | Phase 04-palette-panel P03 | 0 | 0 tasks | 0 files |
 | Phase 04.1-phase-4 P01 | 8 | 2 tasks | 1 files |
+| Phase 04.2-palette-ui P01 | 12 | 1 tasks | 1 files |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
 - Phase 04.1 inserted after Phase 4: Phase 4 返工 — 透明像素判断修正 + 色卡直接应用到画布 (URGENT)
+- Phase 05.1 inserted after Phase 5: selection visual polish — DPR fix + inverse-color drag preview + slow purple-gray ants (INSERTED)
 
 ### Decisions
 
@@ -112,6 +114,9 @@ Recent decisions affecting current work:
 - [Phase 04.1-phase-4]: PAL-03: Alpha normalization done in JS before encoding to avoid cv2.IMREAD_COLOR black-compositing bug
 - [Phase 04.1-phase-4]: PAL-04: applyPalette is now synchronous with save-after pushHistory — palette apply is fully undoable (Cmd+Z) and independent from subsequent pencil/bucket strokes
 - [Phase 04.1-phase-4]: palette-result-panel removal: 7 deletion points executed (deletion 7 pre-done by Plan 01); flex-direction:row retained; applyPalette binding untouched
+- [Phase 04.2-palette-ui]: [04.2-01]: flex-shrink:0 for pal-sticky-bottom instead of position:sticky — .palette-section overflow:hidden breaks sticky
+- [Phase 04.2-palette-ui]: [04.2-01]: mappingModeSelect as <select> replaces 3 radio cards — compact for narrow left panel
+- [Phase 04.2-palette-ui]: [04.2-01]: paletteEnabled toggle removed from palette-header — no on/off gate needed for palette panel
 
 ### Pending Todos
 
