@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 Phase: 4 of 7 (Palette Panel) + Phase 5 (Selection Tools) running in parallel
 Plan: Phase 4 Plan 3/3 checkpoint reached (awaiting human verification); Phase 5 Plan 3/4 complete
 Status: Phase 4 Plan 03 checkpoint — awaiting human verification of PAL-01, PAL-02, UI-03, web_ui.html deletion; Phase 5 Plan 03 done
-Last activity: 2026-03-03 - Reached 04-03 checkpoint: Phase 4 visual verification awaiting user approval
+Last activity: 2026-03-03 - Completed quick task 3: applyPalette save-after fix — undo steps are now independent
 
 Progress: [████████████] 56%
 
@@ -110,7 +110,7 @@ Recent decisions affecting current work:
 - [Phase 04-palette-panel]: [04-02]: applyPalette 原为非破坏性预览 — **已废弃**；Phase 04.1 改为破坏性应用（直接写入 EditorState.pixels + pushHistory），移除 palette-result-panel
 - [Phase 04-palette-panel]: [04-02]: canvas-area 改为 flex-row，zoom-scroll-content 成为实际滚动容器
 - [Phase 04.1-phase-4]: PAL-03: Alpha normalization done in JS before encoding to avoid cv2.IMREAD_COLOR black-compositing bug
-- [Phase 04.1-phase-4]: PAL-04: applyPalette is now synchronous with save-before pushHistory — palette apply is fully undoable (Cmd+Z)
+- [Phase 04.1-phase-4]: PAL-04: applyPalette is now synchronous with save-after pushHistory — palette apply is fully undoable (Cmd+Z) and independent from subsequent pencil/bucket strokes
 - [Phase 04.1-phase-4]: palette-result-panel removal: 7 deletion points executed (deletion 7 pre-done by Plan 01); flex-direction:row retained; applyPalette binding untouched
 
 ### Pending Todos
