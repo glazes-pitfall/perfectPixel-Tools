@@ -1859,48 +1859,36 @@
       } catch (err) { palShowStatus('导出失败：' + err.message, 'error'); }
     }
 
-    // ── PAL-02: applyPalette — non-destructive preview via /api/apply-palette ──
-    async function applyPalette() {
-      const b64 = getEditorImageB64();
-      if (!b64 || currentPalette.length === 0) return;
-      const btn = document.getElementById('applyPaletteBtn');
-      if (btn) { btn.disabled = true; btn.textContent = '处理中...'; }
-      try {
-        const mode = document.querySelector('input[name=mappingMode]:checked')?.value || 'nearest';
-        const fd = new FormData();
-        fd.append('image', b64);
-        fd.append('palette', JSON.stringify(currentPalette));
-        fd.append('mode', mode);
-        fd.append('scale', '4');
-        const res = await fetch('/api/apply-palette', { method: 'POST', body: fd });
-        const data = await res.json();
-        if (!res.ok) { palShowStatus('色卡应用失败: ' + (data.error || res.status), 'error'); return; }
-        // Preview only — EditorState.pixels NOT modified; pushHistory NOT called
-        const exactSrc  = 'data:image/png;base64,' + data.output;
-        const scaledSrc = 'data:image/png;base64,' + (data.output_scaled || data.output);
-        const origSrc   = 'data:image/png;base64,' + b64;
-        const origImg = document.getElementById('pal-result-original');
-        const origDl  = document.getElementById('pal-dl-orig-exact');
-        const mapImg  = document.getElementById('pal-result-mapped');
-        const mapDl   = document.getElementById('pal-dl-mapped-exact');
-        const mapDlSc = document.getElementById('pal-dl-mapped-scaled');
-        if (origImg) origImg.src = origSrc;
-        if (origDl)  origDl.href = origSrc;
-        if (mapImg)  mapImg.src  = exactSrc;
-        if (mapDl)   mapDl.href  = exactSrc;
-        if (mapDlSc) mapDlSc.href = scaledSrc;
-        const panel = document.getElementById('palette-result-panel');
-        if (panel) panel.style.display = 'flex';
-        palShowStatus('色卡已应用（预览模式，原图未修改）', 'success');
-      } catch (err) {
-        palShowStatus('色卡应用出错: ' + err.message, 'error');
-      } finally {
-        if (btn) {
-          btn.textContent = '应用色卡';
-          const palEnabled = document.getElementById('paletteEnabled');
-          btn.disabled = !(palEnabled && palEnabled.checked) || !EditorState.pixels || currentPalette.length === 0;
+    // ── PAL-04: 最近色卡色匹配（RGB 欧氏距离平方，不开根号）──────────────────
+    function nearestPaletteColor(r, g, b, palette) {
+      let bestIdx = 0, bestDist = Infinity;
+      for (let i = 0; i < palette.length; i++) {
+        const dr = r - palette[i][0], dg = g - palette[i][1], db = b - palette[i][2];
+        const dist = dr*dr + dg*dg + db*db;
+        if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+      }
+      return palette[bestIdx];  // [r, g, b]
+    }
+
+    // ── PAL-04: 破坏性应用色卡 — 直接写入 EditorState.pixels + pushHistory ──
+    function applyPalette() {
+      if (!EditorState.pixels || currentPalette.length === 0) return;
+      pushHistory();  // save-before（瞬时操作，参照 paint bucket 模式）
+      const px = EditorState.pixels;
+      const pal = currentPalette;
+      for (let i = 0; i < px.length; i += 4) {
+        const a = px[i + 3];
+        if (a <= 127) {
+          // 透明一侧 → 纯透明
+          px[i] = 0; px[i+1] = 0; px[i+2] = 0; px[i+3] = 0;
+        } else {
+          // 不透明一侧 → 最近色卡色，alpha 强制 255
+          const [nr, ng, nb] = nearestPaletteColor(px[i], px[i+1], px[i+2], pal);
+          px[i] = nr; px[i+1] = ng; px[i+2] = nb; px[i+3] = 255;
         }
       }
+      flushPixels();
+      palShowStatus('色卡已应用', 'success');
     }
 
     // ── DOM ready ─────────────────────────────────────────────────────────────
