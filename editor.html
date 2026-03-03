@@ -2387,16 +2387,18 @@
 
       function _marqueeDrawPreview(rx, ry, rw, rh) {
         selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
-        selCtx.save();
-        selCtx.lineWidth = 1;
-        selCtx.setLineDash([4, 4]);
-        selCtx.strokeStyle = '#ffffff';
-        selCtx.lineDashOffset = 0;
-        selCtx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);
-        selCtx.strokeStyle = '#000000';
-        selCtx.lineDashOffset = 4;
-        selCtx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);
-        selCtx.restore();
+        // 用 fillRect 四边（上下左右各一像素条）替代 setLineDash strokeRect
+        // 两次绘制形成白底黑框，角点通过重叠确保闭合无缺口
+        function drawBorderPass(offset, color) {
+          selCtx.fillStyle = color;
+          const ox = offset, oy = offset;
+          selCtx.fillRect(rx + ox,      ry + oy,       rw + 1, 1);   // Top
+          selCtx.fillRect(rx + ox,      ry + rh + oy,  rw + 1, 1);   // Bottom
+          selCtx.fillRect(rx + ox,      ry + oy,       1, rh);        // Left
+          selCtx.fillRect(rx + rw + ox, ry + oy,       1, rh + 1);   // Right
+        }
+        drawBorderPass(0, '#ffffff');
+        drawBorderPass(1, '#000000');
       }
 
       tools.marquee = {
