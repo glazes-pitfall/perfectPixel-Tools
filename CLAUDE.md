@@ -1,5 +1,9 @@
 # PerfectPixel — Project Instructions
 
+## Communication Language
+
+**始终用简体中文与用户沟通。** All responses to the user must be in Simplified Chinese.
+
 ## What This Is
 
 PerfectPixel is a Python tool that auto-detects pixel art grids and refines AI-generated pixel images to be perfectly aligned. Ver 1.1 added a local browser-based Web UI. **Ver 1.2 adds a full browser-based pixel art editor (`editor.html`).**
@@ -56,6 +60,46 @@ These are the published library. Any change risks breaking grid detection behavi
 ---
 
 ## Editor Architecture (Ver 1.2)
+
+### Layout Overview
+
+```
+┌─────────────────────────────────────────────────────┐
+│ Top Bar: tool settings (Tolerance / Contiguous / ...) │ [Undo] [Redo] │
+├──────────────┬──────────────────────────┬────────────┤
+│  Left Panel  │        Canvas            │Right Panel │
+│  ─────────── │  (pixel-canvas stack)    │ ────────── │
+│  色卡限制界面 │                          │  marquee   │
+│  (collapsible│  After palette apply:    │  wand      │
+│  scrollable) │  canvas + diff side-by- │  ────────  │
+│  ─────────── │  side, both downloadable │  move      │
+│  [scrollable │                          │  ────────  │
+│   area above]│                          │  pencil    │
+│              │                          │  bucket    │
+│  ════════════│                          │  ────────  │
+│  Permanent   │                          │  eraser    │
+│  Palette     │                          │            │
+│  (always     │                          │            │
+│  bottom-left)│                          │            │
+│  色盘/取色   │                          │            │
+│  hex / RGB   │                          │            │
+└──────────────┴──────────────────────────┴────────────┘
+```
+
+**Layout rules:**
+- **Right sidebar**: 6 tools only — Marquee (M), Wand (W), Move (V), Pencil (B), Paint Bucket (G), Eraser (E). No color picker tool here.
+- **Left sidebar top area**: 色卡限制界面 (ported from web_ui.html as-is, collapsible/scrollable)
+- **Left sidebar bottom-left (permanent)**: 常驻调色盘 — color wheel/picker, eyedropper, hex input, RGB inputs. Always visible, not collapsible.
+- **Top bar**: context-sensitive tool settings + Undo (Cmd+Z) and Redo (Shift+Cmd+Z) pinned to top-right
+- **Center**: canvas + optional side-by-side diff after palette apply; download buttons (precise / N× scaled) below each
+
+**Eyedropper (取色) belongs in the permanent palette panel, NOT in the right tool sidebar.**
+
+**Color card ↔ palette sync (Phase 4):**
+- Clicking a swatch in 色卡限制界面 → auto-syncs that color to 常驻调色盘 (sets as foreground color)
+- When eyedropper/picker lands on a color that matches a swatch → highlight that swatch with a selection border
+
+---
 
 ### Three-Canvas Layer Stack
 
@@ -285,6 +329,81 @@ Existing routes reused as-is: `/api/apply-palette`, `/api/export-palette`, `/api
 
 ---
 
+## Available MCP Plugins
+
+### Playwright — 浏览器测试与 UI 验证
+
+用于在真实浏览器中测试 `http://localhost:5010`（先确保 Flask 已启动）。
+
+**核心工作流：**
+
+```
+# 1. 打开页面
+browser_navigate(url="http://localhost:5010")
+
+# 2. 检查 UI 结构（推荐，比截图更适合后续操作）
+browser_snapshot()
+
+# 3. 视觉截图
+browser_take_screenshot(type="png")
+
+# 4. 点击元素（ref 来自 snapshot 的引用 ID）
+browser_click(ref="...", element="按钮描述")
+
+# 5. 输入文字
+browser_type(ref="...", text="内容")
+
+# 6. 查看控制台报错（level="error" 过滤 JS 错误）
+browser_console_messages(level="error")
+
+# 7. 查看 API 请求
+browser_network_requests(includeStatic=False)
+
+# 8. 在页面上执行 JS（调试 EditorState 等）
+browser_evaluate(function="() => JSON.stringify(EditorState.activeTool)")
+```
+
+**测试 editor.html 的常用操作：**
+
+| 目的 | 工具 |
+|------|------|
+| 打开编辑器页面 | `browser_navigate(url="http://localhost:5010/editor")` |
+| 检查 canvas 是否渲染 | `browser_snapshot()` 确认三个 canvas 元素存在 |
+| 模拟绘制（点击 canvas） | `browser_click(ref="cursor-canvas ref")` |
+| 检查 JS 报错 | `browser_console_messages(level="error")` |
+| 读取 EditorState | `browser_evaluate(function="() => EditorState.width + 'x' + EditorState.height")` |
+| 调整窗口大小测试响应式 | `browser_resize(width=1280, height=800)` |
+| 测试文件上传 | `browser_file_upload(paths=["/path/to/test.png"])` |
+| 等待异步操作完成 | `browser_wait_for(text="Ready")` |
+| 处理弹窗 | `browser_handle_dialog(accept=True)` |
+
+**注意事项：**
+- 优先用 `browser_snapshot()` 而非截图——快照返回可操作的 ref ID
+- 测试前确认 Flask 运行在 5010 端口：`python3 web_app.py`
+- `browser_evaluate` 可直接读取 `EditorState` 验证内部状态，无需 UI 操作
+
+---
+
+### Context7 — 库文档查询
+
+用于查询 Flask、OpenCV、Pillow 等依赖的最新 API 文档。
+
+```
+# 步骤 1：解析库名获取 library ID
+mcp__plugin_context7_context7__resolve-library-id(
+  libraryName="flask",
+  query="file upload route"
+)
+
+# 步骤 2：查询具体文档
+mcp__plugin_context7_context7__query-docs(
+  libraryId="/pallets/flask",
+  query="send_file usage"
+)
+```
+
+---
+
 ## Ver 1.2 Roadmap Summary
 
 7 phases, all targeting `editor.html`. See `.planning/ROADMAP.md` for full details.
@@ -293,8 +412,8 @@ Existing routes reused as-is: `/api/apply-palette`, `/api/export-palette`, `/api
 |-------|------|
 | 1: Foundation | editor.html loads, 3-canvas setup, coordinate system, zoom |
 | 2: History | pushHistory / undo / redo infrastructure |
-| 3: Core Tools | Pencil (B), Eraser (E), Paint Bucket (G), Color Picker |
-| 4: Palette Panel ∥ | Port palette from web_ui.html, swatch↔picker sync |
+| 3: Core Tools | Pencil (B), Eraser (E), Paint Bucket (G) |
+| 4: Palette Panel ∥ | Port 色卡限制界面 + 常驻调色盘 (hex/RGB/eyedropper) from web_ui.html; swatch click → sync to palette; picked color highlights matching swatch |
 | 5: Selection Tools ∥ | Rectangle Marquee (M), Magic Wand (W), marching ants |
 | 6: Transform | Move (V), 8-handle scale, RotSprite rotation |
 | 7: Integration | "Open in Editor" entry point, Canvas Size (S), downloads |
