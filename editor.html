@@ -119,6 +119,10 @@
     #zoom-scroll-content {
       flex: 1;
       overflow: auto;
+    }
+
+    /* Scroll content element — sized by centerCanvas to create the scrollable area */
+    #zoom-scroll-inner {
       position: relative;
     }
 
@@ -151,6 +155,9 @@
       background-size: 32px 32px;
       background-position: 0 0, 0 16px, 16px -16px, -16px 0px;
     }
+
+    /* Eyedropper mode: force crosshair everywhere (overrides button cursors etc.) */
+    body.eyedropper-active, body.eyedropper-active * { cursor: crosshair !important; }
 
     /* ── Canvas elements: pixel-perfect rendering ─────────────────────────── */
     canvas {
@@ -660,10 +667,12 @@
     <!-- Canvas Area -->
     <div id="canvas-area">
       <div id="zoom-scroll-content">
-        <div id="zoom-container">
-          <canvas id="pixel-canvas"></canvas>
-          <canvas id="selection-canvas"></canvas>
-          <canvas id="cursor-canvas"></canvas>
+        <div id="zoom-scroll-inner">
+          <div id="zoom-container">
+            <canvas id="pixel-canvas"></canvas>
+            <canvas id="selection-canvas"></canvas>
+            <canvas id="cursor-canvas"></canvas>
+          </div>
         </div>
       </div>
       <!-- PAL-02: Palette result panel (side-by-side diff) -->
@@ -962,32 +971,17 @@
 
     // ── Tool activation ───────────────────────────────────────────────────────
     function setActiveTool(name) {
-      // EyeDropper API: if browser supports it, open OS-level color picker.
-      // Picks from anywhere on screen — UI panels, other apps, outside browser.
-      // Falls back to canvas-only eyedropper when API is unavailable (Firefox/Safari).
-      if (name === 'eyedropper' && window.EyeDropper && EditorState.activeTool !== 'eyedropper') {
-        const prevTool = EditorState.activeTool;
-        const ep = new window.EyeDropper();
-        ep.open().then(result => {
-          const h = result.sRGBHex.replace('#', '');
-          EditorState.foregroundColor = [
-            parseInt(h.slice(0, 2), 16),
-            parseInt(h.slice(2, 4), 16),
-            parseInt(h.slice(4, 6), 16),
-            255,
-          ];
-          syncColorUI();
-          setActiveTool(prevTool);
-        }).catch(() => {
-          setActiveTool(prevTool);  // cancelled — restore
-        });
-        return;
-      }
-
-      // Canvas-only eyedropper fallback (or API already active)
+      // Eyedropper: canvas picks use getPixel(EditorState.pixels); off-canvas
+      // auto-triggers EyeDropper API after cursor leaves canvas for 300 ms.
       if (name === 'eyedropper' && EditorState.activeTool !== 'eyedropper') {
         EditorState._prevTool = EditorState.activeTool;
+        document.body.classList.add('eyedropper-active');
+      } else if (name !== 'eyedropper' && EditorState.activeTool === 'eyedropper') {
+        document.body.classList.remove('eyedropper-active');
+        // Abort any open EyeDropper API session
+        if (_eyedropperAborter) { _eyedropperAborter.abort(); _eyedropperAborter = null; }
       }
+
       EditorState.activeTool = name;
       document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
         btn.classList.toggle('tool-btn-active', btn.dataset.tool === name);
@@ -1001,7 +995,7 @@
       });
       const activePanel = document.getElementById('tool-settings-' + name);
       if (activePanel) activePanel.style.display = 'flex';
-      // Cursor style follows active tool
+      // Cursor style follows active tool (eyedropper-active body class handles global cursor)
       if (cursorCanvas) {
         if (name === 'marquee' || name === 'wand' || name === 'eyedropper') {
           cursorCanvas.style.cursor = 'crosshair';
@@ -1020,6 +1014,9 @@
     let pixelCtx = null;
     let selCtx = null;
     let cursorCtx = null;
+
+    // ── Eyedropper: AbortController for open EyeDropper API session ──────────
+    let _eyedropperAborter = null;
 
     // ── Selection state ───────────────────────────────────────────────────────
     let antsRafId = null;
@@ -1529,13 +1526,14 @@
      * Call after initCanvases() and after loading a new image.
      */
     function centerCanvas() {
-      const area = document.getElementById('zoom-scroll-content');
+      const area = document.getElementById('zoom-scroll-content'); // scroll viewport
+      const sc   = document.getElementById('zoom-scroll-inner');   // scroll content
       const zoom = EditorState.zoom;
       const W = EditorState.width  * zoom;
       const H = EditorState.height * zoom;
-      // Scroll content must be large enough to hold canvas + PAD on all sides
-      area.style.width  = (2 * PAD + W) + 'px';
-      area.style.height = (2 * PAD + H) + 'px';
+      // Size the scroll content so the viewport can scroll to reach the canvas
+      sc.style.width  = (2 * PAD + W) + 'px';
+      sc.style.height = (2 * PAD + H) + 'px';
       // Position zoom-container at (PAD, PAD) in scroll-content
       const zc = document.getElementById('zoom-container');
       zc.style.left = PAD + 'px';
@@ -1569,12 +1567,13 @@
     function applyZoom(newZoom, pivotClientX, pivotClientY) {
       const oldZoom = EditorState.zoom;
       newZoom = Math.max(0.25, Math.min(64, newZoom));
-      const area = document.getElementById('zoom-scroll-content');
+      const area = document.getElementById('zoom-scroll-content'); // scroll viewport
+      const sc   = document.getElementById('zoom-scroll-inner');   // scroll content
       // Update scroll-content size for new zoom (must happen BEFORE adjusting scroll)
       const newW = EditorState.width  * newZoom;
       const newH = EditorState.height * newZoom;
-      area.style.width  = (2 * PAD + newW) + 'px';
-      area.style.height = (2 * PAD + newH) + 'px';
+      sc.style.width  = (2 * PAD + newW) + 'px';
+      sc.style.height = (2 * PAD + newH) + 'px';
       // Pivot in scroll-content coordinates
       const areaRect = area.getBoundingClientRect();
       const pxInArea = pivotClientX - areaRect.left;
@@ -2430,6 +2429,27 @@
       const zoomScrollEl = document.getElementById('zoom-scroll-content');
 
       // Wheel / trackpad events (passive:false required for preventDefault)
+      // Eyedropper: open EyeDropper API when cursor leaves the editor area entirely
+      // (moves to left/right sidebar, top bar, or outside the browser window)
+      canvasArea.addEventListener('pointerleave', () => {
+        if (EditorState.activeTool === 'eyedropper' && window.EyeDropper && !_eyedropperAborter) {
+          _eyedropperAborter = new AbortController();
+          new window.EyeDropper().open({ signal: _eyedropperAborter.signal })
+            .then(result => {
+              _eyedropperAborter = null;
+              const h = result.sRGBHex.replace('#', '');
+              EditorState.foregroundColor = [
+                parseInt(h.slice(0, 2), 16),
+                parseInt(h.slice(2, 4), 16),
+                parseInt(h.slice(4, 6), 16),
+                255,
+              ];
+              syncColorUI();
+            })
+            .catch(() => { _eyedropperAborter = null; });
+        }
+      });
+
       canvasArea.addEventListener('wheel', e => {
         e.preventDefault();
 
@@ -2625,7 +2645,21 @@
           const offCanvas = document.createElement('canvas');
           offCanvas.width = EditorState.width; offCanvas.height = EditorState.height;
           const offCtx = offCanvas.getContext('2d');
-          offCtx.putImageData(new ImageData(EditorState.pixels, EditorState.width, EditorState.height), 0, 0);
+          // PAL-03: 写入前规范化 alpha — alpha >= 128 强制 255，alpha <= 127 清零（避免 Flask IMREAD_COLOR 合成出虚假黑色）
+          const src = EditorState.pixels;
+          const filtered = new Uint8ClampedArray(src.length);
+          for (let i = 0; i < src.length; i += 4) {
+            const a = src[i + 3];
+            if (a >= 128) {
+              filtered[i]   = src[i];
+              filtered[i+1] = src[i+1];
+              filtered[i+2] = src[i+2];
+              filtered[i+3] = 255;
+            } else {
+              filtered[i] = filtered[i+1] = filtered[i+2] = filtered[i+3] = 0;
+            }
+          }
+          offCtx.putImageData(new ImageData(filtered, EditorState.width, EditorState.height), 0, 0);
           const b64 = offCanvas.toDataURL('image/png').split(',')[1];
           fd.append('image', b64);
           try {
