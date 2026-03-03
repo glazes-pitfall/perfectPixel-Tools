@@ -113,6 +113,7 @@
       flex-direction: row;
       overflow: hidden;
       background: var(--bg);
+      position: relative;  /* positioning context for #selection-canvas overlay */
     }
 
     /* Zoom scroll content fills remaining space, scrolls independently */
@@ -158,17 +159,25 @@
       display: block;
     }
 
-    /* Three canvas layers stacked absolutely inside zoom-container */
+    /* Two canvas layers stacked absolutely inside zoom-container */
     #pixel-canvas,
-    #selection-canvas,
     #cursor-canvas {
       position: absolute;
       top: 0;
       left: 0;
     }
-    #pixel-canvas     { z-index: 1; }
-    #selection-canvas { z-index: 2; }
-    #cursor-canvas    { z-index: 3; cursor: crosshair; }
+    #pixel-canvas  { z-index: 1; }
+    #cursor-canvas { z-index: 3; cursor: crosshair; }
+
+    /* Selection canvas lives OUTSIDE zoom-container — covers canvas-area viewport.
+       Positioned in screen space so lineWidth is immune to CSS zoom scaling. */
+    #selection-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      pointer-events: none;
+      z-index: 10;
+      image-rendering: pixelated;
+    }
 
     /* ── Right Panel (tool strip) ─────────────────────────────────────────── */
     #right-panel {
@@ -775,11 +784,11 @@
 
     <!-- Canvas Area -->
     <div id="canvas-area">
+      <canvas id="selection-canvas"></canvas>
       <div id="zoom-scroll-content">
         <div id="zoom-scroll-inner">
           <div id="zoom-container">
             <canvas id="pixel-canvas"></canvas>
-            <canvas id="selection-canvas"></canvas>
             <canvas id="cursor-canvas"></canvas>
           </div>
         </div>
@@ -1110,7 +1119,6 @@
     let _eyedropperAborter = null;
 
     // ── Selection state ───────────────────────────────────────────────────────
-    const SEL_PAD = 2; // 屏幕像素 — selCanvas 每侧额外空间，使外描边不被裁剪
     let antsRafId = null;
 
     function snapToGrid(v, gridSize) {
@@ -1131,8 +1139,8 @@
       EditorState.selection = null;
       if (antsRafId) { cancelAnimationFrame(antsRafId); antsRafId = null; }
       if (selCtx) {
-        const _pad = SEL_PAD / (window.devicePixelRatio || 1);
-        selCtx.clearRect(-_pad, -_pad, EditorState.width + _pad * 2, EditorState.height + _pad * 2);
+        const dpr = window.devicePixelRatio || 1;
+        selCtx.clearRect(0, 0, selCanvas.width / dpr, selCanvas.height / dpr);
       }
       updateSelectionUI();
     }
@@ -1224,60 +1232,69 @@
       if (!EditorState.selection) { antsRafId = null; return; }
 
       const dpr = window.devicePixelRatio || 1;
-      const _pad = SEL_PAD / dpr;  // clearRect 需覆盖 padding 区域
-
-      selCtx.clearRect(-_pad, -_pad, EditorState.width + _pad * 2, EditorState.height + _pad * 2);
+      selCtx.clearRect(0, 0, selCanvas.width / dpr, selCanvas.height / dpr);
       selCtx.globalCompositeOperation = 'source-over';
       selCtx.setLineDash([]);
 
-      // 500ms 闪烁
+      // Compute where pixel-canvas sits in canvas-area CSS coordinates.
+      // getBoundingClientRect accounts for zoom + scroll automatically.
+      const caRect  = document.getElementById('canvas-area').getBoundingClientRect();
+      const pixRect = pixelCanvas.getBoundingClientRect();
+      const originX = pixRect.left - caRect.left;   // CSS px
+      const originY = pixRect.top  - caRect.top;
+      const ps = pixRect.width / EditorState.width;  // CSS px per canvas pixel
+
+      // lineWidth = 2 CSS pixels, FIXED — independent of zoom and DPR.
+      // selCtx has scale(dpr,dpr), so 1 logical unit = 1 CSS pixel.
       const bright = Math.floor(Date.now() / 500) % 2 === 0;
       selCtx.strokeStyle = bright ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.15)';
-      // 描边宽度固定为 2 屏幕像素，不随 zoom 缩放
-      selCtx.lineWidth = 2 / dpr / EditorState.zoom;
+      selCtx.lineWidth = 2;   // 2 CSS pixels, always
+      const off = 1;          // lineWidth/2 — places stroke fully outside selection
 
       const mask = EditorState.selectionMask;
       const { x: bx, y: by, w: bw, h: bh } = EditorState.selection;
 
       if (mask) {
-        // 像素轮廓路径：遍历 bounding box，对每个选中像素检测四邻居
         const W = EditorState.width, H = EditorState.height;
-        const off = 1 / dpr / EditorState.zoom;  // lineWidth/2：使 2px 描边完全落在选区外侧
         const path = new Path2D();
 
         for (let py = by; py < by + bh; py++) {
           for (let px = bx; px < bx + bw; px++) {
-            if (!mask[px + py * W]) continue;  // 未选中像素跳过
+            if (!mask[px + py * W]) continue;
+
+            const sx = originX + px * ps;   // screen X of this pixel's left edge
+            const sy = originY + py * ps;   // screen Y of this pixel's top edge
 
             // 上邻居未选中（或越界）→ 画上边
             if (py === 0 || !mask[px + (py - 1) * W]) {
-              path.moveTo(px - off, py - off);
-              path.lineTo(px + 1 + off, py - off);
+              path.moveTo(sx - off, sy - off);
+              path.lineTo(sx + ps + off, sy - off);
             }
             // 下邻居未选中（或越界）→ 画下边
             if (py === H - 1 || !mask[px + (py + 1) * W]) {
-              path.moveTo(px - off, py + 1 + off);
-              path.lineTo(px + 1 + off, py + 1 + off);
+              path.moveTo(sx - off, sy + ps + off);
+              path.lineTo(sx + ps + off, sy + ps + off);
             }
             // 左邻居未选中（或越界）→ 画左边
             if (px === 0 || !mask[(px - 1) + py * W]) {
-              path.moveTo(px - off, py - off);
-              path.lineTo(px - off, py + 1 + off);
+              path.moveTo(sx - off, sy - off);
+              path.lineTo(sx - off, sy + ps + off);
             }
             // 右邻居未选中（或越界）→ 画右边
             if (px === W - 1 || !mask[(px + 1) + py * W]) {
-              path.moveTo(px + 1 + off, py - off);
-              path.lineTo(px + 1 + off, py + 1 + off);
+              path.moveTo(sx + ps + off, sy - off);
+              path.lineTo(sx + ps + off, sy + ps + off);
             }
           }
         }
         selCtx.stroke(path);
       } else {
-        // Fallback（无 mask）：bounding box 矩形描边
-        const off = 1 / dpr / EditorState.zoom;
+        // Fallback: rectangle stroke in screen coordinates
         selCtx.strokeRect(
-          bx - off, by - off,
-          bw + off * 2, bh + off * 2
+          originX + bx * ps - off,
+          originY + by * ps - off,
+          bw * ps + off * 2,
+          bh * ps + off * 2
         );
       }
 
@@ -1443,17 +1460,17 @@
       // overlay canvases: DPR-scaled for crisp rendering on Retina displays
       const dpr = window.devicePixelRatio || 1;
 
-      // selCanvas: 每侧扩展 SEL_PAD 屏幕像素，外描边不被裁剪
-      const selCSSPad = SEL_PAD / dpr;  // 逻辑像素 padding（CSS 单位）
-      selCanvas.width  = width  * dpr + SEL_PAD * 2;
-      selCanvas.height = height * dpr + SEL_PAD * 2;
-      selCanvas.style.width  = (width  + selCSSPad * 2) + 'px';
-      selCanvas.style.height = (height + selCSSPad * 2) + 'px';
-      selCanvas.style.top  = (-selCSSPad) + 'px';
-      selCanvas.style.left = (-selCSSPad) + 'px';
+      // selCanvas: covers the entire canvas-area viewport (outside zoom-container).
+      // Drawn in screen/CSS coordinates so lineWidth is NOT affected by zoom scaling.
+      const canvasAreaEl = document.getElementById('canvas-area');
+      const caW = canvasAreaEl.clientWidth;
+      const caH = canvasAreaEl.clientHeight;
+      selCanvas.width  = caW * dpr;
+      selCanvas.height = caH * dpr;
+      selCanvas.style.width  = caW + 'px';
+      selCanvas.style.height = caH + 'px';
       selCtx = selCanvas.getContext('2d');
-      selCtx.scale(dpr, dpr);
-      selCtx.translate(selCSSPad, selCSSPad); // (0,0) 映射到图像左上角
+      selCtx.scale(dpr, dpr);  // 1 logical unit = 1 CSS pixel
 
       // cursorCanvas: 保持原尺寸（接收 pointer events，不需要 padding）
       cursorCanvas.width  = width  * dpr;
@@ -2593,34 +2610,38 @@
       }
 
       function _marqueeDrawPreview(rx, ry, rw, rh) {
-        const _pad = SEL_PAD / (window.devicePixelRatio || 1);
-        selCtx.clearRect(-_pad, -_pad, EditorState.width + _pad * 2, EditorState.height + _pad * 2);
+        const dpr = window.devicePixelRatio || 1;
+        selCtx.clearRect(0, 0, selCanvas.width / dpr, selCanvas.height / dpr);
         if (rw <= 0 || rh <= 0) return;
+
+        // Convert canvas pixels → canvas-area CSS coordinates (same as drawAnts)
+        const caRect  = document.getElementById('canvas-area').getBoundingClientRect();
+        const pixRect = pixelCanvas.getBoundingClientRect();
+        const originX = pixRect.left - caRect.left;
+        const originY = pixRect.top  - caRect.top;
+        const ps = pixRect.width / EditorState.width;  // CSS px per canvas pixel
 
         // 边界四条边的像素坐标列表（画布逻辑像素）
         const border = [];
         const x0 = rx, y0 = ry, x1 = rx + rw - 1, y1 = ry + rh - 1;
-
-        // 上边和下边
         for (let px = x0; px <= x1; px++) {
           border.push([px, y0]);
           if (rh > 1) border.push([px, y1]);
         }
-        // 左边和右边（不含角落，已由上下边覆盖）
         for (let py = y0 + 1; py <= y1 - 1; py++) {
           border.push([x0, py]);
           if (rw > 1) border.push([x1, py]);
         }
 
-        // 对每个边界像素，读取 EditorState.pixels 的颜色，绘制反色方块
+        // 对每个边界像素，读取 EditorState.pixels 的颜色，绘制反色方块（screen space）
         selCtx.globalCompositeOperation = 'source-over';
         selCtx.setLineDash([]);
         for (const [px, py] of border) {
-          // 越界保护
           if (px < 0 || py < 0 || px >= EditorState.width || py >= EditorState.height) continue;
           const [r, g, b] = getPixel(px, py);
           selCtx.fillStyle = `rgb(${255 - r},${255 - g},${255 - b})`;
-          selCtx.fillRect(px, py, 1, 1);  // 逻辑坐标 1×1（selCtx 已 scale(dpr,dpr)）
+          // Draw a block exactly the size of one canvas pixel in screen space
+          selCtx.fillRect(originX + px * ps, originY + py * ps, ps, ps);
         }
       }
 
@@ -2630,8 +2651,8 @@
           if (!e.shiftKey) {
             // Cancel existing ants but don't call clearSelection — we'll set a new one on up
             if (antsRafId) { cancelAnimationFrame(antsRafId); antsRafId = null; }
-            const _pad = SEL_PAD / (window.devicePixelRatio || 1);
-            selCtx.clearRect(-_pad, -_pad, EditorState.width + _pad * 2, EditorState.height + _pad * 2);
+            const _dpr = window.devicePixelRatio || 1;
+            selCtx.clearRect(0, 0, selCanvas.width / _dpr, selCanvas.height / _dpr);
           }
           _marqueeStartX = x; _marqueeStartY = y;
           _marqueeCurrentX = x; _marqueeCurrentY = y;
