@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T10:21:54Z"
+last_updated: "2026-03-03T10:25:21.318Z"
 progress:
-  total_phases: 7
-  completed_phases: 3
+  total_phases: 5
+  completed_phases: 2
   total_plans: 16
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -23,9 +23,9 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 ## Current Position
 
 Phase: 5 of 7 (Selection Tools) — IN PROGRESS
-Plan: 1/4 complete
-Status: Phase 5 Plan 01 done — Selection data model + Rectangle Marquee tool complete; ready for 05-02
-Last activity: 2026-03-03 - Completed 05-01: selectionMask, marching-ants animation, Rectangle Marquee (M key)
+Plan: 2/4 complete
+Status: Phase 5 Plan 02 done — Magic Wand tool + invertSelection + keyboard shortcuts complete; ready for 05-03
+Last activity: 2026-03-03 - Completed 05-02: wandSelect BFS, tools.wand, invertSelection, Cmd+D, Shift+Cmd+I
 
 Progress: [████████████] 56%
 
@@ -55,6 +55,7 @@ Progress: [████████████] 56%
 | Phase 03-core-tools P03 | 3 | 2 tasks | 1 files |
 | Phase 05-selection-tools P01 | 5 | 2 tasks | 1 files |
 | Phase 04-palette-panel P01 | 9 | 2 tasks | 1 files |
+| Phase 05-selection-tools P02 | 1 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,8 @@ Recent decisions affecting current work:
 - [04-01]: PAL-01 uses single click for sync, double-click for color editor popup; swatches-outer wrapper prevents box-shadow clipping
 - [04-01]: generateBtn uses EditorState.pixels via off-screen canvas toDataURL() (no file selector in editor)
 - [04-01]: palShowStatus() logs to console.info — no status bar in editor.html Phase 4
+- [Phase 05-02]: [05-02]: wandSelect uses Uint8Array mask (x + y * W indexing) for O(1) rebuildAntsPath compatibility
+- [Phase 05-02]: [05-02]: invertSelection with no selection selects all pixels (fill(1)); full-canvas invert clears selection
 
 ### Pending Todos
 
@@ -115,6 +118,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Completed 04-01-PLAN.md — Palette panel ported; PAL-01 swatch click syncs foreground color
-Next: Phase 4 Plan 02 (palette apply + highlight matching swatch) or Phase 5 Plan 02 (Magic Wand) in parallel
+Stopped at: Completed 05-02-PLAN.md — Magic Wand tool + invertSelection complete
+Next: Phase 5 Plan 03 or 04 (if remaining) or Phase 6 Transform
 Resume file: None

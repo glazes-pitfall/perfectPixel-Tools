@@ -53,9 +53,9 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 
 - [x] **SEL-01**: Rectangle Marquee Tool（快捷键 M）：选区对齐到检测到的像素网格
 - [x] **SEL-02**: Rectangle Marquee Tool（快捷键 M）：拖动时实时显示 1px 宽反色虚线选区边界（Aseprite 风格）
-- [ ] **SEL-03**: Magic Wand Tool（快捷键 W）：支持 Tolerance 容差参数
-- [ ] **SEL-04**: Magic Wand Tool（快捷键 W）：支持 Contiguous 勾选框
-- [ ] **SEL-05**: 选区激活时，顶栏显示 Deselect（Cmd+D）和 Inverse（Shift+Cmd+I）
+- [x] **SEL-03**: Magic Wand Tool（快捷键 W）：支持 Tolerance 容差参数
+- [x] **SEL-04**: Magic Wand Tool（快捷键 W）：支持 Contiguous 勾选框
+- [x] **SEL-05**: 选区激活时，顶栏显示 Deselect（Cmd+D）和 Inverse（Shift+Cmd+I）
 
 ### XFM — 变换工具
 
@@ -123,9 +123,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DRAW-06 | Phase 3 | Complete |
 | SEL-01 | Phase 5 | Complete |
 | SEL-02 | Phase 5 | Complete |
-| SEL-03 | Phase 5 | Pending |
-| SEL-04 | Phase 5 | Pending |
-| SEL-05 | Phase 5 | Pending |
+| SEL-03 | Phase 5 | Complete |
+| SEL-04 | Phase 5 | Complete |
+| SEL-05 | Phase 5 | Complete |
 | XFM-01 | Phase 6 | Pending |
 | XFM-02 | Phase 6 | Pending |
 | XFM-03 | Phase 6 | Pending |
