@@ -227,20 +227,15 @@
     .palette-body {
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-      max-height: 50vh;
     }
     .palette-body.hidden { display: none; }
     .pal-scroll-area {
-      flex: 1;
-      overflow-y: auto;
       padding: 12px;
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
     .pal-sticky-bottom {
-      flex-shrink: 0;
       padding: 10px 12px;
       border-top: 1px solid var(--border);
       background: var(--surface);
@@ -258,15 +253,70 @@
     }
     .add-swatch:hover { border-color: var(--accent); background: #666; color: #fff; }
     .combobox-row {
-      display: flex; gap: 4px; align-items: center;
+      display: flex;
+      border: 1px solid var(--border);
+      border-radius: var(--radius, 6px);
+      overflow: hidden;
+      height: 30px;
     }
     .combobox-row input[type=text] {
-      flex: 1; padding: 5px 8px; border-radius: 6px;
-      border: 1px solid var(--border); background: var(--surface2);
-      color: var(--text); font-size: 13px; min-width: 0;
+      flex: 1;
+      padding: 0 8px;
+      border: none;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 13px;
+      min-width: 0;
+      outline: none;
     }
-    .combobox-row input[type=text]:focus { border-color: var(--accent); outline: none; }
-    .combobox-drop-btn { padding: 5px 8px; font-size: 10px; }
+    .combobox-row input[type=text]:focus {
+      background: var(--surface3, var(--surface2));
+    }
+    .combobox-drop-btn {
+      width: 28px;
+      flex-shrink: 0;
+      border: none;
+      border-left: 1px solid var(--border);
+      border-radius: 0;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 10px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .combobox-drop-btn:hover { background: var(--surface3, #555); }
+    .combobox-row .btn {
+      border-left: 1px solid var(--border);
+      border-radius: 0;
+      width: 28px;
+      flex-shrink: 0;
+      padding: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .swatch-info-icon {
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: default;
+      opacity: 0.6;
+      user-select: none;
+    }
+    .swatch-info-icon:hover { opacity: 1; }
+    .pal-del-btn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: none;
+      color: var(--error, #e55);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 12px;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .custom-option:hover .pal-del-btn { display: inline; }
+    .custom-option { position: relative; }
     .export-dropdown { position: relative; }
     .export-menu {
       position: absolute; right: 0; top: calc(100% + 4px);
@@ -531,7 +581,10 @@
               <!-- 当前色卡 -->
               <div>
                 <div class="swatches-label">
-                  <span class="section-label" style="margin:0;">当前色卡</span>
+                  <div style="display:flex;align-items:center;gap:4px;">
+                    <span class="section-label" style="margin:0;">当前色卡</span>
+                    <span class="swatch-info-icon" title="双击色块可更改颜色">ⓘ</span>
+                  </div>
                   <div style="display:flex;align-items:center;gap:6px;">
                     <span class="swatches-count" id="swatchCount">0 色</span>
                     <div class="export-dropdown" id="exportDropdown">
@@ -544,7 +597,6 @@
                     </div>
                   </div>
                 </div>
-                <div style="font-size:11px;color:var(--text-muted);margin:3px 0 5px;">双击色块可更改颜色</div>
                 <div class="swatches-outer">
                   <div class="swatches-grid" id="swatchesGrid">
                     <span class="swatches-empty">色卡为空</span>
@@ -1810,6 +1862,19 @@
           if (savedPaletteOptionsEl) savedPaletteOptionsEl.style.display = 'none';
           palShowStatus(`已加载色卡「${name}」：${palette.length} 色`, 'success');
         });
+        const delBtn = document.createElement('button');
+        delBtn.className = 'pal-del-btn';
+        delBtn.textContent = '✕';
+        delBtn.title = '删除此色卡';
+        delBtn.addEventListener('click', e => {
+          e.stopPropagation();
+          const palettes = getSavedPalettes();
+          delete palettes[name];
+          setSavedPalettes(palettes);
+          if (selectedPaletteKey === name) selectedPaletteKey = null;
+          refreshSavedDropdown();
+        });
+        div.appendChild(delBtn);
         opts.appendChild(div);
       });
 
@@ -2735,6 +2800,8 @@
             currentPaletteMeta = { name: '', source: 'generate', algorithm: algo, count: data.count };
             setCurrentPalette(data.palette);
             palShowStatus(`色卡已生成：${data.count} 色（${ALGO_NAMES[algo] || algo}）`, 'success');
+            const paletteNameEl = document.getElementById('paletteName');
+            if (paletteNameEl) paletteNameEl.value = '未命名色卡';
           } catch (err) {
             palShowStatus('生成色卡失败：' + err.message, 'error');
           }
