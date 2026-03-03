@@ -2889,6 +2889,129 @@
         }
       });
 
+      // ── Keyboard shortcut help modal ────────────────────────────────────────
+      (function() {
+        // Platform detection: macOS uses Cmd/Option; others use Ctrl/Alt
+        const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+        const mod = isMac ? 'Cmd' : 'Ctrl';
+        const alt = isMac ? 'Option' : 'Alt';
+        const del = isMac ? 'Delete' : 'Delete';
+
+        // Shortcut data grouped by section
+        const SECTIONS = [
+          {
+            title: '工具',
+            rows: [
+              { desc: '铅笔',       keys: ['B'] },
+              { desc: '橡皮擦',     keys: ['E'] },
+              { desc: '油漆桶',     keys: ['G'] },
+              { desc: '选框（矩形）', keys: ['M'] },
+              { desc: '魔棒',       keys: ['W'] },
+              { desc: '吸管（取色）', keys: ['I'] },
+              { desc: '取消吸管',   keys: ['Esc'] },
+            ],
+          },
+          {
+            title: '历史',
+            rows: [
+              { desc: '撤销',       keys: [mod, 'Z'] },
+              { desc: '重做',       keys: [mod, '⇧Z'] },
+            ],
+          },
+          {
+            title: '视图',
+            rows: [
+              { desc: '放大',       keys: [mod, '+'] },
+              { desc: '缩小',       keys: [mod, '−'] },
+            ],
+          },
+          {
+            title: '选区',
+            rows: [
+              { desc: '取消选区',        keys: [mod, 'D'] },
+              { desc: '反选',            keys: [mod, '⇧I'] },
+              { desc: '删除选区内像素',  keys: [del] },
+              { desc: '用前景色填充选区', keys: [alt, del] },
+            ],
+          },
+          {
+            title: '其他',
+            rows: [
+              { desc: '帮助', keys: ['?'] },
+            ],
+          },
+        ];
+
+        function buildShortcutList() {
+          const container = document.getElementById('shortcut-list');
+          if (!container) return;
+          container.innerHTML = '';
+          SECTIONS.forEach(section => {
+            const title = document.createElement('div');
+            title.className = 'sc-section-title';
+            title.textContent = section.title;
+            container.appendChild(title);
+            section.rows.forEach(row => {
+              const rowEl = document.createElement('div');
+              rowEl.className = 'sc-row';
+              const descEl = document.createElement('span');
+              descEl.className = 'sc-desc';
+              descEl.textContent = row.desc;
+              const keysEl = document.createElement('span');
+              keysEl.className = 'sc-keys';
+              row.keys.forEach(k => {
+                const keyEl = document.createElement('kbd');
+                keyEl.className = 'sc-key';
+                keyEl.textContent = k;
+                keysEl.appendChild(keyEl);
+              });
+              rowEl.appendChild(descEl);
+              rowEl.appendChild(keysEl);
+              container.appendChild(rowEl);
+            });
+          });
+        }
+
+        function showHelpModal() {
+          buildShortcutList();
+          const modal = document.getElementById('shortcut-modal');
+          if (modal) { modal.style.display = 'flex'; }
+        }
+        function closeHelpModal() {
+          const modal = document.getElementById('shortcut-modal');
+          if (modal) { modal.style.display = 'none'; }
+        }
+
+        // Button binding
+        const helpBtn = document.getElementById('help-btn');
+        if (helpBtn) helpBtn.addEventListener('click', showHelpModal);
+
+        // Close button
+        const helpCloseBtn = document.getElementById('help-close-btn');
+        if (helpCloseBtn) helpCloseBtn.addEventListener('click', closeHelpModal);
+
+        // Click-outside-to-close (click on backdrop overlay)
+        const modal = document.getElementById('shortcut-modal');
+        if (modal) {
+          modal.addEventListener('click', e => {
+            if (e.target === modal) closeHelpModal();
+          });
+        }
+
+        // Keyboard: ? opens modal; Escape closes modal
+        document.addEventListener('keydown', e => {
+          if (e.target.matches('input, textarea')) return;
+          if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            const isOpen = document.getElementById('shortcut-modal')?.style.display === 'flex';
+            if (isOpen) closeHelpModal(); else showHelpModal();
+          }
+          if (e.key === 'Escape') {
+            closeHelpModal();
+          }
+        });
+      })();
+
       // ── Palette Panel: DOM event bindings ─────────────────────────────────────
 
       // paletteHeader click → toggle body visibility + chevron
