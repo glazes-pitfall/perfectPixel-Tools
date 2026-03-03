@@ -145,6 +145,7 @@ None yet.
 | 7 | palette-panel-ui-refinements | 2026-03-03 | c2d521d | [7-palette-panel-ui-refinements](./quick/7-palette-panel-ui-refinements/) |
 | 8 | selection-border-visual-redesign-inverse | 2026-03-04 | 8e5d242 | [8-selection-border-visual-redesign-inverse](./quick/8-selection-border-visual-redesign-inverse/) |
 | 9 | selection-outer-border-2px-screen-jagged | 2026-03-04 | ce577a8 | [9-selection-outer-border-2px-screen-jagged](./quick/9-selection-outer-border-2px-screen-jagged/) |
+| 10 | selection-border-fixed-2px-screen-independent-of-zoom | 2026-03-04 | daaba7b | [10-selection-border-fixed-2px-screen-indepe](./quick/10-selection-border-fixed-2px-screen-indepe/) |
 
 ### Blockers/Concerns
 
