@@ -2865,6 +2865,62 @@
         _showTransformTopBar();
       }
 
+      // ── Plan 06-02: scaleNearestNeighbor ─────────────────────────────────────
+      function scaleNearestNeighbor(pixels, srcW, srcH, dstW, dstH) {
+        const out = new Uint8ClampedArray(dstW * dstH * 4);
+        const xRatio = srcW / dstW;
+        const yRatio = srcH / dstH;
+        for (let dy = 0; dy < dstH; dy++) {
+          const sy = Math.min(srcH - 1, Math.floor(dy * yRatio));
+          for (let dx = 0; dx < dstW; dx++) {
+            const sx = Math.min(srcW - 1, Math.floor(dx * xRatio));
+            const srcI = (sy * srcW + sx) * 4;
+            const dstI = (dy * dstW + dx) * 4;
+            out[dstI]   = pixels[srcI];
+            out[dstI+1] = pixels[srcI+1];
+            out[dstI+2] = pixels[srcI+2];
+            out[dstI+3] = pixels[srcI+3];
+          }
+        }
+        return out;
+      }
+
+      // ── Plan 06-02: hitTestHandle ─────────────────────────────────────────────
+      function hitTestHandle(clientX, clientY) {
+        if (!EditorState.transformState) return null;
+        const ts = EditorState.transformState;
+        const caRect  = document.getElementById('canvas-area').getBoundingClientRect();
+        const pixRect = pixelCanvas.getBoundingClientRect();
+        const originX = pixRect.left - caRect.left;
+        const originY = pixRect.top  - caRect.top;
+        const ps      = pixRect.width / EditorState.width;
+
+        const lx = clientX - caRect.left;
+        const ly = clientY - caRect.top;
+
+        const sx = originX + ts.floatX * ps;
+        const sy = originY + ts.floatY * ps;
+        const sw = ts.floatW * ps;
+        const sh = ts.floatH * ps;
+        const HALF = 6;  // slightly larger hit zone than visual (12px) for usability
+
+        const handlePositions = [
+          [sx,        sy       ],  // 0 TL
+          [sx + sw/2, sy       ],  // 1 TC
+          [sx + sw,   sy       ],  // 2 TR
+          [sx,        sy + sh/2],  // 3 ML
+          [sx + sw,   sy + sh/2],  // 4 MR
+          [sx,        sy + sh  ],  // 5 BL
+          [sx + sw/2, sy + sh  ],  // 6 BC
+          [sx + sw,   sy + sh  ],  // 7 BR
+        ];
+        for (let i = 0; i < handlePositions.length; i++) {
+          const [hx, hy] = handlePositions[i];
+          if (Math.abs(lx - hx) <= HALF && Math.abs(ly - hy) <= HALF) return i;
+        }
+        return null;
+      }
+
       function _drawTransformUI() {
         if (!EditorState.transformState) return;
         const ts  = EditorState.transformState;
@@ -2894,6 +2950,27 @@
         selCtx.beginPath();
         selCtx.strokeRect(sx - 1, sy - 1, sw + 2, sh + 2);
         selCtx.setLineDash([]);
+
+        // 8 handles: TL, TC, TR, ML, MR, BL, BC, BR (indices 0-7)
+        const HALF = 4;  // 8px visual size
+        const handlePositions = [
+          [sx,        sy       ],  // 0 TL
+          [sx + sw/2, sy       ],  // 1 TC
+          [sx + sw,   sy       ],  // 2 TR
+          [sx,        sy + sh/2],  // 3 ML
+          [sx + sw,   sy + sh/2],  // 4 MR
+          [sx,        sy + sh  ],  // 5 BL
+          [sx + sw/2, sy + sh  ],  // 6 BC
+          [sx + sw,   sy + sh  ],  // 7 BR
+        ];
+        selCtx.fillStyle   = '#7c6af7';  // gray-purple, matches --accent
+        selCtx.strokeStyle = '#fff';
+        selCtx.lineWidth   = 1;
+        selCtx.setLineDash([]);
+        for (const [hx, hy] of handlePositions) {
+          selCtx.fillRect(hx - HALF, hy - HALF, HALF * 2, HALF * 2);
+          selCtx.strokeRect(hx - HALF, hy - HALF, HALF * 2, HALF * 2);
+        }
       }
 
       function _showTransformTopBar() {
