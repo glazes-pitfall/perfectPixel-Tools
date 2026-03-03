@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T19:20:33.106Z"
+last_updated: "2026-03-03T21:19:37.061Z"
 progress:
   total_phases: 9
-  completed_phases: 7
-  total_plans: 24
-  completed_plans: 22
+  completed_phases: 6
+  total_plans: 26
+  completed_plans: 23
 ---
 
 # Project State
@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: Phase 6 (Transform) — Plan 02 complete; Plan 03 (RotSprite rotation) next
-Plan: 06-02 DONE — 8-handle bounding box scale system; 06-03 next
-Status: Phase 6 in progress — Move + scale complete; RotSprite rotation remaining
-Last activity: 2026-03-04 - Completed 06-02 8-handle scale system (commits defe6d3, 770117e)
+Phase: Phase 6 (Transform) — Plan 04 complete; Plan 05 (corner rotate zones) next
+Plan: 06-04 DONE — Transform bug fixes (B1 scale anchor, B2 zoom sync, B3 boundary drag); 06-05 next
+Status: Phase 6 in progress — Move + scale + RotSprite + bug fixes complete; corner rotate zones remaining
+Last activity: 2026-03-04 - Completed 06-04 transform bug fixes (commits 905b2f4, 2791f73, 5ea8462)
 
 Progress: [████████████] 56%
 
@@ -66,6 +66,7 @@ Progress: [████████████] 56%
 | Phase 06-transform P01 | 4 | 1 tasks | 1 files |
 | Phase 06-transform P02 | 3 | 2 tasks | 1 files |
 | Phase 06-transform P03 | 10 | 1 tasks | 1 files |
+| Phase 06-transform P04 | 3 | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,7 @@ Recent decisions affecting current work:
 - [Phase 06-transform]: hitTestHandle hit zone 12px vs 8px visual for usability on small selections
 - [Phase 06-transform]: Lock checkbox uses one-way value sync to prevent debounce recursion in scale inputs
 - [Phase 06-transform]: RotSprite compound order: scale first then rotate; colorEq uses buffer indices; 128x128 limit on origBbox; _showStatus toast overlay created dynamically
+- [Phase 06-transform]: [06-04]: anchorFrac table bridges onDown/onMove for scale anchor; _onZoomChanged hook bridges outer applyZoom with inner _drawTransformUI; selCanvas pointer-events toggle enables canvas-boundary drag continuation
 
 ### Pending Todos
 
