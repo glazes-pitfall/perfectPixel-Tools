@@ -303,6 +303,26 @@
       user-select: none;
     }
     .swatch-info-icon:hover { opacity: 1; }
+    /* Instant tooltip for swatch info icon */
+    .swatch-info-icon[data-tooltip] {
+      position: relative;
+    }
+    .swatch-info-icon[data-tooltip]:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 50%;
+      top: 120%;
+      transform: translateX(-50%);
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      white-space: nowrap;
+      font-size: 11px;
+      z-index: 200;
+      box-shadow: 0 4px 10px rgba(0,0,0,.4);
+    }
     .pal-del-btn {
       position: absolute;
       right: 6px;
@@ -380,6 +400,7 @@
     .swatches-grid {
       display: flex; flex-wrap: wrap; gap: 4px;
       padding: 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+      margin-top: 6px;
       overflow: visible;
     }
     .swatch {
@@ -457,8 +478,27 @@
     .control-group { display: flex; flex-direction: column; gap: 4px; }
     .control-group label { font-size: 12px; color: var(--text-muted); }
     .slider-row { display: flex; gap: 6px; align-items: center; }
-    .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
-    .n-colors-input { width: 52px; padding: 3px 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-size: 12px; }
+    .slider-row input[type=range] {
+      flex: 1;
+      accent-color: var(--accent);
+      background-color: var(--surface3);
+    }
+    .n-colors-input {
+      width: 42px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 11px;
+      text-align: center;
+      -moz-appearance: textfield;
+    }
+    .n-colors-input::-webkit-outer-spin-button,
+    .n-colors-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
 
     /* Generic text input styling within palette body */
     .palette-body input[type=text] {
@@ -466,6 +506,27 @@
       background: var(--surface2); color: var(--text); font-size: 13px; width: 100%;
     }
     .palette-body input[type=text]:focus { outline: none; border-color: var(--accent); }
+
+    /* Overrides for combobox row: inner controls follow outer box, no inner corners */
+    .palette-body .combobox-row input[type=text] {
+      border: none;
+      border-radius: 0;
+      background: var(--surface2);
+      padding: 0 8px;
+    }
+    .palette-body .combobox-row .btn-ghost {
+      border: none;
+      background: transparent;
+    }
+    /* Keep border on palette dropdown button */
+    #palDropBtn {
+      border: 1px solid var(--border);
+      border-radius: 0;
+      background: var(--surface2);
+      height: 30px;
+      margin-top: -1px;
+      margin-bottom: -1px;
+    }
 
     /* ── Color Picker ────────────────────────────────────────────────────────── */
     .pc-hex-row { display:flex; align-items:stretch; margin-bottom:10px; }
@@ -585,12 +646,12 @@
                 <div class="swatches-label">
                   <div style="display:flex;align-items:center;gap:4px;">
                     <span class="section-label" style="margin:0;">当前色卡</span>
-                    <span class="swatch-info-icon" title="双击色块可更改颜色">ⓘ</span>
+                    <span class="swatch-info-icon" title="" data-tooltip="双击色块可更改颜色">ⓘ</span>
                   </div>
                   <div style="display:flex;align-items:center;gap:6px;">
                     <span class="swatches-count" id="swatchCount">0 色</span>
                     <div class="export-dropdown" id="exportDropdown">
-                      <button class="btn btn-ghost" id="exportDropBtn" style="font-size:11px;padding:3px 7px;" title="导出色卡">导出▼</button>
+                      <button class="btn btn-ghost" id="exportDropBtn" style="font-size:10px;padding:2px 6px;" title="导出色卡">导出▼</button>
                       <div class="export-menu" id="exportMenu" style="display:none;">
                         <button class="export-menu-item" id="exportAct">.act</button>
                         <button class="export-menu-item" id="exportGpl">.gpl</button>
@@ -2488,13 +2549,33 @@
 
       function _marqueeDrawPreview(rx, ry, rw, rh) {
         selCtx.clearRect(0, 0, EditorState.width, EditorState.height);
-        selCtx.lineWidth = 1;
-        selCtx.setLineDash([4, 4]);
-        selCtx.globalCompositeOperation = 'difference';
-        selCtx.strokeStyle = '#ffffff';
-        selCtx.lineDashOffset = 0;
-        selCtx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);
+        if (rw <= 0 || rh <= 0) return;
+
+        // 边界四条边的像素坐标列表（画布逻辑像素）
+        const border = [];
+        const x0 = rx, y0 = ry, x1 = rx + rw - 1, y1 = ry + rh - 1;
+
+        // 上边和下边
+        for (let px = x0; px <= x1; px++) {
+          border.push([px, y0]);
+          if (rh > 1) border.push([px, y1]);
+        }
+        // 左边和右边（不含角落，已由上下边覆盖）
+        for (let py = y0 + 1; py <= y1 - 1; py++) {
+          border.push([x0, py]);
+          if (rw > 1) border.push([x1, py]);
+        }
+
+        // 对每个边界像素，读取 EditorState.pixels 的颜色，绘制反色方块
         selCtx.globalCompositeOperation = 'source-over';
+        selCtx.setLineDash([]);
+        for (const [px, py] of border) {
+          // 越界保护
+          if (px < 0 || py < 0 || px >= EditorState.width || py >= EditorState.height) continue;
+          const [r, g, b] = getPixel(px, py);
+          selCtx.fillStyle = `rgb(${255 - r},${255 - g},${255 - b})`;
+          selCtx.fillRect(px, py, 1, 1);  // 逻辑坐标 1×1（selCtx 已 scale(dpr,dpr)）
+        }
       }
 
       tools.marquee = {
