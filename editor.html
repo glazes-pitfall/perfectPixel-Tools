@@ -1233,7 +1233,8 @@
       // 500ms 闪烁
       const bright = Math.floor(Date.now() / 500) % 2 === 0;
       selCtx.strokeStyle = bright ? 'rgba(255,255,255,1)' : 'rgba(255,255,255,0.15)';
-      selCtx.lineWidth = 2 / dpr;  // 2 屏幕像素
+      // 描边宽度固定为 2 屏幕像素，不随 zoom 缩放
+      selCtx.lineWidth = 2 / dpr / EditorState.zoom;
 
       const mask = EditorState.selectionMask;
       const { x: bx, y: by, w: bw, h: bh } = EditorState.selection;
@@ -1241,7 +1242,7 @@
       if (mask) {
         // 像素轮廓路径：遍历 bounding box，对每个选中像素检测四邻居
         const W = EditorState.width, H = EditorState.height;
-        const off = 1 / dpr;  // lineWidth/2：使 2px 描边完全落在选区外侧
+        const off = 1 / dpr / EditorState.zoom;  // lineWidth/2：使 2px 描边完全落在选区外侧
         const path = new Path2D();
 
         for (let py = by; py < by + bh; py++) {
@@ -1273,7 +1274,7 @@
         selCtx.stroke(path);
       } else {
         // Fallback（无 mask）：bounding box 矩形描边
-        const off = 1 / dpr;
+        const off = 1 / dpr / EditorState.zoom;
         selCtx.strokeRect(
           bx - off, by - off,
           bw + off * 2, bh + off * 2
