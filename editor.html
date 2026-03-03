@@ -830,15 +830,15 @@
 
     <!-- Right Panel (tool strip — disabled in Phase 1) -->
     <div id="right-panel">
-      <button class="tool-btn" data-tool="marquee" title="Marquee (M)"><img src="/icons/Marquee_icon.png" width="22" height="22" alt="Marquee"></button>
-      <button class="tool-btn" data-tool="wand" title="Wand (W)"><img src="/icons/Wand_icon.png" width="22" height="22" alt="Wand"></button>
-      <button class="tool-btn" data-tool="move" title="Move (V)"><img src="/icons/Move_icon.png" width="22" height="22" alt="Move"></button>
-      <button class="tool-btn" data-tool="pencil" title="Pencil (B)"><img src="/icons/Pencil_icon.png" width="22" height="22" alt="Pencil"></button>
-      <button class="tool-btn" data-tool="bucket" title="Bucket (G)"><img src="/icons/Bucket_icon.png" width="22" height="22" alt="Bucket"></button>
-      <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><img src="/icons/Eraser_icon.png" width="22" height="22" alt="Eraser"></button>
-      <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)"><img src="/icons/Eyedropper_icon.png" width="22" height="22" alt="Eyedropper"></button>
+      <button class="tool-btn" data-tool="marquee" title="Marquee (M)"><img src="/icons/Marquee_icon.png" width="28" height="28" alt="Marquee"></button>
+      <button class="tool-btn" data-tool="wand" title="Wand (W)"><img src="/icons/Wand_icon.png" width="28" height="28" alt="Wand"></button>
+      <button class="tool-btn" data-tool="move" title="Move (V)"><img src="/icons/Move_icon.png" width="28" height="28" alt="Move"></button>
+      <button class="tool-btn" data-tool="pencil" title="Pencil (B)"><img src="/icons/Pencil_icon.png" width="28" height="28" alt="Pencil"></button>
+      <button class="tool-btn" data-tool="bucket" title="Bucket (G)"><img src="/icons/Bucket_icon.png" width="28" height="28" alt="Bucket"></button>
+      <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><img src="/icons/Eraser_icon.png" width="28" height="28" alt="Eraser"></button>
+      <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)"><img src="/icons/Eyedropper_icon.png" width="28" height="28" alt="Eyedropper"></button>
       <div style="flex:1;"></div><!-- spacer pushes help button to bottom -->
-      <button class="tool-btn" id="help-btn" title="快捷键帮助 (?)"><img src="/icons/Help_icon.png" width="22" height="22" alt="Help"></button>
+      <button class="tool-btn" id="help-btn" title="快捷键帮助 (?)"><img src="/icons/Help_icon.png" width="28" height="28" alt="Help"></button>
     </div>
 
   </div><!-- /#layout -->
@@ -3032,6 +3032,8 @@
       }
 
       // ── Plan 06-03: rotSprite (3× scale2x → NN rotate → 8× downsample) ───────
+      // Returns { pixels: Uint8ClampedArray, w: number, h: number }
+      // Output bounding box expands to contain all rotated pixels (no clipping).
       function rotSprite(pixels, w, h, angleDeg) {
         // Step 1: 8× upscale via 3 passes of scale2x
         let buf = pixels, bw = w, bh = h;
@@ -3041,20 +3043,25 @@
         }
         // bw === w * 8, bh === h * 8
 
-        // Step 2: nearest-neighbor rotate at 8× scale (inverse mapping)
+        // Rotated bounding box at 8× scale
         const rad = -angleDeg * Math.PI / 180;  // negative = clockwise in Y-down coords
         const cos = Math.cos(rad), sin = Math.sin(rad);
-        const cx = bw / 2, cy = bh / 2;
-        const rotBuf = new Uint8ClampedArray(bw * bh * 4);
+        const absCos = Math.abs(cos), absSin = Math.abs(sin);
+        const outBw = Math.ceil(bw * absCos + bh * absSin);  // expanded width  at 8×
+        const outBh = Math.ceil(bw * absSin + bh * absCos);  // expanded height at 8×
+        const icx = bw / 2,    icy = bh / 2;     // input  center
+        const ocx = outBw / 2, ocy = outBh / 2;  // output center
 
-        for (let dy = 0; dy < bh; dy++) {
-          for (let dx = 0; dx < bw; dx++) {
-            const relX = dx - cx, relY = dy - cy;
-            const srcX = Math.round(relX * cos - relY * sin + cx);
-            const srcY = Math.round(relX * sin + relY * cos + cy);
+        // Step 2: nearest-neighbor rotate into the expanded buffer (inverse mapping)
+        const rotBuf = new Uint8ClampedArray(outBw * outBh * 4);
+        for (let dy = 0; dy < outBh; dy++) {
+          for (let dx = 0; dx < outBw; dx++) {
+            const relX = dx - ocx, relY = dy - ocy;
+            const srcX = Math.round(relX * cos - relY * sin + icx);
+            const srcY = Math.round(relX * sin + relY * cos + icy);
             if (srcX >= 0 && srcX < bw && srcY >= 0 && srcY < bh) {
               const si = (srcY * bw + srcX) * 4;
-              const di = (dy * bw + dx) * 4;
+              const di = (dy * outBw + dx) * 4;
               rotBuf[di]   = buf[si];
               rotBuf[di+1] = buf[si+1];
               rotBuf[di+2] = buf[si+2];
@@ -3064,15 +3071,19 @@
           }
         }
 
+        // Output canvas-pixel dimensions (1/8 of 8× buffer)
+        const outW = Math.ceil(w * absCos + h * absSin);
+        const outH = Math.ceil(w * absSin + h * absCos);
+
         // Step 3: 8× downsample → center-sample of each 8×8 block (matches Aseprite)
-        const out = new Uint8ClampedArray(w * h * 4);
-        for (let oy = 0; oy < h; oy++) {
-          for (let ox = 0; ox < w; ox++) {
+        const out = new Uint8ClampedArray(outW * outH * 4);
+        for (let oy = 0; oy < outH; oy++) {
+          for (let ox = 0; ox < outW; ox++) {
             const sx = ox * 8 + 4;  // center of 8×8 block
             const sy = oy * 8 + 4;
-            if (sx < bw && sy < bh) {
-              const si = (sy * bw + sx) * 4;
-              const di = (oy * w + ox) * 4;
+            if (sx < outBw && sy < outBh) {
+              const si = (sy * outBw + sx) * 4;
+              const di = (oy * outW + ox) * 4;
               out[di]   = rotBuf[si];
               out[di+1] = rotBuf[si+1];
               out[di+2] = rotBuf[si+2];
@@ -3080,7 +3091,7 @@
             }
           }
         }
-        return out;
+        return { pixels: out, w: outW, h: outH };
       }
 
       // ── Plan 06-03: _applyRotationPreview ────────────────────────────────────
@@ -3113,13 +3124,19 @@
           scaledPx = scaleNearestNeighbor(srcPx, srcW, srcH, scaledW, scaledH);
         }
 
-        // Apply rotation
+        // Capture current visual center before updating dimensions (keeps pivot fixed)
+        const pivX = ts.floatX + ts.floatW / 2;
+        const pivY = ts.floatY + ts.floatH / 2;
+
+        // Apply rotation — returns expanded bounding box {pixels, w, h}
         const rotated = rotSprite(scaledPx, scaledW, scaledH, angleDeg);
 
-        // Update float to rotated result
-        ts.floatPixels = rotated;
-        ts.floatW      = scaledW;
-        ts.floatH      = scaledH;
+        // Update float to rotated result; re-center around pivot
+        ts.floatPixels = rotated.pixels;
+        ts.floatW      = rotated.w;
+        ts.floatH      = rotated.h;
+        ts.floatX      = pivX - rotated.w / 2;
+        ts.floatY      = pivY - rotated.h / 2;
 
         _drawTransformUI();
       }
@@ -3645,6 +3662,11 @@
         zoomScrollEl.scrollTop  += pixelDeltaY;
         clampScroll(zoomScrollEl);
       }, { passive: false });
+
+      // Redraw transform overlay when user pans (scrolls) the canvas area
+      zoomScrollEl.addEventListener('scroll', () => {
+        if (EditorState.transformState) _drawTransformUI();
+      }, { passive: true });
 
       // Top bar Zoom + / - buttons (snap to power-of-2 levels: 0.25/0.5/1/2/4/8/16/32/64)
       document.getElementById('btn-zoom-in').addEventListener('click', () => {
