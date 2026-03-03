@@ -993,9 +993,8 @@
     let _eyedropperAborter = null;
 
     // ── Selection state ───────────────────────────────────────────────────────
-    let antsRafId = null;
-    let antsDashOffset = 0;
-    let _antsPath = null;  // Path2D cache; rebuilt on mask change, only offset animates
+    let antsRafId = null;         // 保留供 clearSelection 兼容调用
+    let _borderPixels = null;     // {x,y}[] — 边界像素列表（mask 边缘）
 
     function snapToGrid(v, gridSize) {
       if (gridSize <= 1) return v;
@@ -1014,7 +1013,7 @@
       EditorState.selectionMask = null;
       EditorState.selection = null;
       if (antsRafId) { cancelAnimationFrame(antsRafId); antsRafId = null; }
-      _antsPath = null;
+      _borderPixels = null;
       if (selCtx) selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
       updateSelectionUI();
     }
@@ -1036,8 +1035,8 @@
     function setSelection(mask, bbox) {
       EditorState.selectionMask = mask;
       EditorState.selection = bbox;
-      _antsPath = null;  // force Path2D rebuild
-      rebuildAntsPath(mask, EditorState.width, EditorState.height);
+      _borderPixels = null;  // force rebuild
+      rebuildSelectionBorder(mask, EditorState.width, EditorState.height);
       updateSelectionUI();
       scheduleAnts();
     }
@@ -1104,40 +1103,38 @@
       flushPixels();
     }
 
-    function rebuildAntsPath(mask, W, H) {
-      _antsPath = new Path2D();
+    function rebuildSelectionBorder(mask, W, H) {
+      _borderPixels = [];
       for (let y = 0; y < H; y++) {
         for (let x = 0; x < W; x++) {
           if (!mask[x + y * W]) continue;
-          if (y === 0   || !mask[x + (y-1) * W]) { _antsPath.moveTo(x, y);   _antsPath.lineTo(x+1, y);   }
-          if (y === H-1 || !mask[x + (y+1) * W]) { _antsPath.moveTo(x, y+1); _antsPath.lineTo(x+1, y+1); }
-          if (x === 0   || !mask[(x-1) + y * W]) { _antsPath.moveTo(x, y);   _antsPath.lineTo(x, y+1);   }
-          if (x === W-1 || !mask[(x+1) + y * W]) { _antsPath.moveTo(x+1, y); _antsPath.lineTo(x+1, y+1); }
+          const onEdge = (
+            y === 0   || !mask[x + (y-1) * W] ||
+            y === H-1 || !mask[x + (y+1) * W] ||
+            x === 0   || !mask[(x-1) + y * W] ||
+            x === W-1 || !mask[(x+1) + y * W]
+          );
+          if (onEdge) _borderPixels.push({x, y});
         }
       }
     }
 
-    function drawAnts() {
-      if (!EditorState.selectionMask || !_antsPath) { antsRafId = null; return; }
+    function drawSelectionBorder() {
+      if (!EditorState.selectionMask || !_borderPixels) return;
       selCtx.clearRect(0, 0, selCanvas.width, selCanvas.height);
+      const dpr = window.devicePixelRatio || 1;
       selCtx.save();
-      selCtx.lineWidth = 1;
-      selCtx.setLineDash([4, 4]);
-      selCtx.strokeStyle = '#ffffff';
-      selCtx.lineDashOffset = antsDashOffset;
-      selCtx.stroke(_antsPath);
-      selCtx.strokeStyle = '#000000';
-      selCtx.lineDashOffset = antsDashOffset + 4;
-      selCtx.stroke(_antsPath);
+      selCtx.scale(dpr, dpr);
+      for (const {x, y} of _borderPixels) {
+        selCtx.fillStyle = (x + y) % 2 === 0 ? '#ffffff' : '#000000';
+        selCtx.fillRect(x, y, 1, 1);
+      }
       selCtx.restore();
-      antsDashOffset = (antsDashOffset - 1 + 8) % 8;
-      antsRafId = requestAnimationFrame(drawAnts);
     }
 
     function scheduleAnts() {
       if (antsRafId) { cancelAnimationFrame(antsRafId); antsRafId = null; }
-      antsDashOffset = 0;
-      antsRafId = requestAnimationFrame(drawAnts);
+      drawSelectionBorder();
     }
 
     // ── History (undo/redo) ───────────────────────────────────────────────────
