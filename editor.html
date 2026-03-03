@@ -852,7 +852,7 @@
        background:rgba(0,0,0,.65); backdrop-filter:blur(2px);
        align-items:center; justify-content:center;">
     <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
-         padding:20px 24px; min-width:320px; max-width:480px; max-height:80vh; overflow-y:auto;
+         padding:20px 24px; min-width:368px; max-width:552px; max-height:80vh; overflow-y:auto;
          box-shadow:0 8px 32px rgba(0,0,0,.6); position:relative;">
       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
         <span style="font-size:13px; font-weight:700; color:var(--text);">快捷键参考</span>
@@ -1129,6 +1129,11 @@
 
     // ── Tool activation ───────────────────────────────────────────────────────
     function setActiveTool(name) {
+      // If leaving move tool with active transform, cancel it (Plan 06-03)
+      // cancelTransform is defined inside DOMContentLoaded; guard with typeof check
+      if (EditorState.activeTool === 'move' && name !== 'move' && EditorState.transformState) {
+        if (typeof cancelTransform === 'function') cancelTransform();
+      }
       // Eyedropper: canvas picks use getPixel(EditorState.pixels); off-canvas
       // auto-triggers EyeDropper API after cursor leaves canvas for 300 ms.
       if (name === 'eyedropper' && EditorState.activeTool !== 'eyedropper') {
@@ -2885,6 +2890,180 @@
         return out;
       }
 
+      // ── Plan 06-03: _showStatus (toast notification) ─────────────────────────
+      // editor.html has no persistent status bar; show a short-lived toast overlay
+      let _statusTimer = null;
+      function _showStatus(msg) {
+        let toast = document.getElementById('editor-status-toast');
+        if (!toast) {
+          toast = document.createElement('div');
+          toast.id = 'editor-status-toast';
+          toast.style.cssText = [
+            'position:fixed', 'bottom:24px', 'left:50%', 'transform:translateX(-50%)',
+            'background:rgba(40,38,58,0.95)', 'color:#e0ddf8',
+            'border:1px solid #7c6af7', 'border-radius:8px',
+            'padding:8px 18px', 'font-size:13px', 'z-index:9999',
+            'pointer-events:none', 'white-space:nowrap',
+          ].join(';');
+          document.body.appendChild(toast);
+        }
+        toast.textContent = msg;
+        toast.style.display = 'block';
+        clearTimeout(_statusTimer);
+        _statusTimer = setTimeout(() => { toast.style.display = 'none'; }, 3000);
+        console.info('[status]', msg);
+      }
+
+      // ── Plan 06-03: colorEq ───────────────────────────────────────────────────
+      function colorEq(pixels, i1, i2) {
+        // Both fully transparent → equal (CLAUDE.md: alpha-aware equality)
+        if (pixels[i1+3] === 0 && pixels[i2+3] === 0) return true;
+        // One transparent, one opaque → unequal
+        if (pixels[i1+3] === 0 || pixels[i2+3] === 0) return false;
+        return pixels[i1]   === pixels[i2]   &&
+               pixels[i1+1] === pixels[i2+1] &&
+               pixels[i1+2] === pixels[i2+2] &&
+               pixels[i1+3] === pixels[i2+3];
+      }
+
+      // ── Plan 06-03: scale2x (single 2× upscale pass; apply 3× for 8×) ────────
+      function scale2x(pixels, w, h) {
+        const OW  = w * 2;
+        const out = new Uint8ClampedArray(OW * h * 2 * 4);
+
+        function copyPixel(src, dst) {
+          out[dst]   = pixels[src];
+          out[dst+1] = pixels[src+1];
+          out[dst+2] = pixels[src+2];
+          out[dst+3] = pixels[src+3];
+        }
+
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            // Official Scale2x neighborhood: B=top, D=left, E=center, F=right, H=bottom
+            const B = (Math.max(0, y-1) * w + x)              * 4;  // top
+            const D = (y * w + Math.max(0, x-1))               * 4;  // left
+            const E = (y * w + x)                               * 4;  // center (current)
+            const F = (y * w + Math.min(w-1, x+1))             * 4;  // right
+            const H = (Math.min(h-1, y+1) * w + x)             * 4;  // bottom
+
+            const oy = y * 2, ox = x * 2;
+            const E0 = (oy * OW + ox)         * 4;  // top-left of output 2×2 block
+            const E1 = (oy * OW + ox + 1)     * 4;  // top-right
+            const E2 = ((oy+1) * OW + ox)     * 4;  // bottom-left
+            const E3 = ((oy+1) * OW + ox + 1) * 4;  // bottom-right
+
+            if (!colorEq(pixels, B, H) && !colorEq(pixels, D, F)) {
+              // E0 = D==B ? D : E
+              copyPixel(colorEq(pixels, D, B) ? D : E, E0);
+              // E1 = B==F ? F : E
+              copyPixel(colorEq(pixels, B, F) ? F : E, E1);
+              // E2 = D==H ? D : E
+              copyPixel(colorEq(pixels, D, H) ? D : E, E2);
+              // E3 = H==F ? F : E
+              copyPixel(colorEq(pixels, H, F) ? F : E, E3);
+            } else {
+              copyPixel(E, E0); copyPixel(E, E1);
+              copyPixel(E, E2); copyPixel(E, E3);
+            }
+          }
+        }
+        return out;
+      }
+
+      // ── Plan 06-03: rotSprite (3× scale2x → NN rotate → 8× downsample) ───────
+      function rotSprite(pixels, w, h, angleDeg) {
+        // Step 1: 8× upscale via 3 passes of scale2x
+        let buf = pixels, bw = w, bh = h;
+        for (let pass = 0; pass < 3; pass++) {
+          buf = scale2x(buf, bw, bh);
+          bw *= 2; bh *= 2;
+        }
+        // bw === w * 8, bh === h * 8
+
+        // Step 2: nearest-neighbor rotate at 8× scale (inverse mapping)
+        const rad = -angleDeg * Math.PI / 180;  // negative = clockwise in Y-down coords
+        const cos = Math.cos(rad), sin = Math.sin(rad);
+        const cx = bw / 2, cy = bh / 2;
+        const rotBuf = new Uint8ClampedArray(bw * bh * 4);
+
+        for (let dy = 0; dy < bh; dy++) {
+          for (let dx = 0; dx < bw; dx++) {
+            const relX = dx - cx, relY = dy - cy;
+            const srcX = Math.round(relX * cos - relY * sin + cx);
+            const srcY = Math.round(relX * sin + relY * cos + cy);
+            if (srcX >= 0 && srcX < bw && srcY >= 0 && srcY < bh) {
+              const si = (srcY * bw + srcX) * 4;
+              const di = (dy * bw + dx) * 4;
+              rotBuf[di]   = buf[si];
+              rotBuf[di+1] = buf[si+1];
+              rotBuf[di+2] = buf[si+2];
+              rotBuf[di+3] = buf[si+3];
+            }
+            // Out of bounds → stays transparent (Uint8ClampedArray default 0)
+          }
+        }
+
+        // Step 3: 8× downsample → center-sample of each 8×8 block (matches Aseprite)
+        const out = new Uint8ClampedArray(w * h * 4);
+        for (let oy = 0; oy < h; oy++) {
+          for (let ox = 0; ox < w; ox++) {
+            const sx = ox * 8 + 4;  // center of 8×8 block
+            const sy = oy * 8 + 4;
+            if (sx < bw && sy < bh) {
+              const si = (sy * bw + sx) * 4;
+              const di = (oy * w + ox) * 4;
+              out[di]   = rotBuf[si];
+              out[di+1] = rotBuf[si+1];
+              out[di+2] = rotBuf[si+2];
+              out[di+3] = rotBuf[si+3];
+            }
+          }
+        }
+        return out;
+      }
+
+      // ── Plan 06-03: _applyRotationPreview ────────────────────────────────────
+      // Compound order: scale to scaleX/scaleY first, then rotSprite
+      function _applyRotationPreview() {
+        const ts = EditorState.transformState;
+        if (!ts) return;
+
+        const angleDeg = ts.angleDeg;
+
+        // 128×128 hard limit check on ORIGINAL selection (not post-scale)
+        if (ts.origBbox.w * ts.origBbox.h > 128 * 128) {
+          _showStatus('Selection too large for rotation — max 128\u00d7128px');
+          return;
+        }
+
+        // Compound order: scale first, then rotate
+        const srcPx = ts._origFloatPixels || ts.floatPixels;
+        const srcW  = ts._origFloatW      || ts.origBbox.w;
+        const srcH  = ts._origFloatH      || ts.origBbox.h;
+
+        let scaledPx = srcPx;
+        let scaledW  = srcW;
+        let scaledH  = srcH;
+
+        // Apply scale if non-unity
+        if (Math.abs(ts.scaleX - 1.0) > 0.001 || Math.abs(ts.scaleY - 1.0) > 0.001) {
+          scaledW = Math.max(1, Math.round(ts.origBbox.w * ts.scaleX));
+          scaledH = Math.max(1, Math.round(ts.origBbox.h * ts.scaleY));
+          scaledPx = scaleNearestNeighbor(srcPx, srcW, srcH, scaledW, scaledH);
+        }
+
+        // Apply rotation
+        const rotated = rotSprite(scaledPx, scaledW, scaledH, angleDeg);
+
+        // Update float to rotated result
+        ts.floatPixels = rotated;
+        ts.floatW      = scaledW;
+        ts.floatH      = scaledH;
+
+        _drawTransformUI();
+      }
+
       // ── Plan 06-02: hitTestHandle ─────────────────────────────────────────────
       function hitTestHandle(clientX, clientY) {
         if (!EditorState.transformState) return null;
@@ -3245,6 +3424,19 @@
         });
       }
 
+      // ── Plan 06-03: Angle° input binding (debounce 300ms) ───────────────────
+      let _rotateInputTimer = null;
+      const rotateAngleInput = document.getElementById('opt-rotate-angle');
+      if (rotateAngleInput) {
+        rotateAngleInput.addEventListener('input', () => {
+          const ts = EditorState.transformState;
+          if (!ts) return;
+          ts.angleDeg = parseFloat(rotateAngleInput.value) || 0;
+          clearTimeout(_rotateInputTimer);
+          _rotateInputTimer = setTimeout(_applyRotationPreview, 300);
+        });
+      }
+
       // ── END Tool dispatch ─────────────────────────────────────────────────────
 
       // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
@@ -3372,6 +3564,11 @@
         if (e.key === 'Escape' && EditorState.transformState && EditorState.activeTool !== 'eyedropper') {
           cancelTransform();
         }
+        // Escape → clear selection (no transform, no eyedropper, modal closed)
+        if (e.key === 'Escape' && EditorState.selectionMask && !EditorState.transformState && EditorState.activeTool !== 'eyedropper') {
+          const modalOpen = document.getElementById('shortcut-modal')?.style.display === 'flex';
+          if (!modalOpen) { e.preventDefault(); clearSelection(); }
+        }
       });
 
       // ── Keyboard shortcut help modal ────────────────────────────────────────
@@ -3387,14 +3584,14 @@
           {
             title: '工具',
             rows: [
-              { desc: '铅笔',         keys: ['B'] },
-              { desc: '橡皮擦',       keys: ['E'] },
-              { desc: '油漆桶',       keys: ['G'] },
               { desc: '选框（矩形）', keys: ['M'] },
               { desc: '魔棒',         keys: ['W'] },
               { desc: '移动',         keys: ['V'] },
+              { desc: '铅笔',         keys: ['B'] },
+              { desc: '油漆桶',       keys: ['G'] },
+              { desc: '橡皮擦',       keys: ['E'] },
               { desc: '吸管（取色）', keys: ['I'] },
-              { desc: '取消吸管',     keys: ['Esc'] },
+              { desc: '取消',         keys: ['Esc'] },
             ],
           },
           {
