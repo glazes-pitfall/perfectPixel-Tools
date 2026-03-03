@@ -3418,7 +3418,10 @@
       function applyTransform() {
         const ts = EditorState.transformState;
         if (!ts) return;
-        pushHistory();  // one undo step for the entire compound transform
+        // save-after: push AFTER writing so history holds state_applied, not state_hole.
+        // activateTransform erased selection pixels without pushing history; if we pushed
+        // here (save-before) the undo stack would contain the hole state, meaning one
+        // undo would skip state_applied entirely and jump straight back to state_hole.
 
         const W = EditorState.width, H = EditorState.height;
         const newMask = new Uint8Array(W * H);
@@ -3438,6 +3441,7 @@
           }
         }
         flushPixels();
+        pushHistory();  // save-after: captures state_applied (pixels already written)
         EditorState.transformState = null;
         _hideTransformTopBar();
         _hideDistanceLabel();
