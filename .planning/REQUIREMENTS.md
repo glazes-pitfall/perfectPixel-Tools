@@ -9,7 +9,7 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 
 ### ENTRY — 编辑器入口
 
-- [ ] **ENTRY-01**: 像素化处理完成后，结果区新增「在编辑器中打开」按钮，点击通过 sessionStorage 传递图像数据并跳转至 editor.html
+- [x] **ENTRY-01**: 像素化处理完成后，结果区新增「在编辑器中打开」按钮，点击通过 sessionStorage 传递图像数据并跳转至 editor.html
 
 ### UI — 编辑器布局
 
@@ -21,7 +21,7 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 
 - [x] **CANVAS-01**: 画布支持缩放（CSS transform），缩放时工具坐标系保持 1:1 像素精度
 - [x] **CANVAS-02**: 画布以 `image-rendering: pixelated` 渲染，禁止插值模糊
-- [ ] **CANVAS-03**: 中央画布下方提供精准版下载和 N 倍放大版下载
+- [x] **CANVAS-03**: 中央画布下方提供精准版下载和 N 倍放大版下载
 
 ### HIST — 撤销/重做
 
@@ -67,10 +67,10 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 
 ### CFG — 画布大小
 
-- [ ] **CFG-01**: Canvas Size（快捷键 S）：进入模式后显示 4 根参考线实时预览新画布边界
-- [ ] **CFG-02**: Canvas Size 参数：Width（宽）、Height（高）（可键入）
-- [ ] **CFG-03**: Canvas Size 参数：Left / Right / Top / Bottom（正值扩张，负值收缩，可键入）
-- [ ] **CFG-04**: 点击「应用」后生成新画布，旧画布内容按偏移量移动到正确位置
+- [x] **CFG-01**: Canvas Size（快捷键 S）：进入模式后显示 4 根参考线实时预览新画布边界
+- [x] **CFG-02**: Canvas Size 参数：Width（宽）、Height（高）（可键入）
+- [x] **CFG-03**: Canvas Size 参数：Left / Right / Top / Bottom（正值扩张，负值收缩，可键入）
+- [x] **CFG-04**: 点击「应用」后生成新画布，旧画布内容按偏移量移动到正确位置
 
 ## v2 Requirements
 
@@ -100,13 +100,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ENTRY-01 | Phase 7 | Pending |
+| ENTRY-01 | Phase 7 | Complete |
 | UI-01 | Phase 1 | Complete |
 | UI-02 | Phase 1 | Complete |
 | UI-03 | — | Deferred (Phase 4.1 撤销了 palette-result-panel) |
 | CANVAS-01 | Phase 1 | Complete |
 | CANVAS-02 | Phase 1 | Complete |
-| CANVAS-03 | Phase 7 | Pending |
+| CANVAS-03 | Phase 7 | Complete |
 | HIST-01 | Phase 2 | Complete |
 | HIST-02 | Phase 2 | Complete |
 | CLR-01 | Phase 3 | Complete |
@@ -131,10 +131,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | XFM-03 | Phase 6 | Complete |
 | XFM-04 | Phase 6 | Complete |
 | XFM-05 | Phase 6 | Complete |
-| CFG-01 | Phase 7 | Pending |
-| CFG-02 | Phase 7 | Pending |
-| CFG-03 | Phase 7 | Pending |
-| CFG-04 | Phase 7 | Pending |
+| CFG-01 | Phase 7 | Complete |
+| CFG-02 | Phase 7 | Complete |
+| CFG-03 | Phase 7 | Complete |
+| CFG-04 | Phase 7 | Complete |
 
 **Coverage:**
 - v1 requirements: 33 total
