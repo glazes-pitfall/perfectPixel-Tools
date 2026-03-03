@@ -125,6 +125,7 @@ None yet.
 | 2 | fix-zoom-center-pan-bounds-sensitivity | 2026-03-02 | f10ea8c | [2-fix-zoom-center-pan-bounds-sensitivity](./quick/2-fix-zoom-center-pan-bounds-sensitivity/) |
 | 3 | applypalette-undo | 2026-03-03 | 350f218 | [3-applypalette-undo](./quick/3-applypalette-undo/) |
 | 4 | 4-3-lab mapping modes | 2026-03-03 | 4d396f5 | [4-3-lab](./quick/4-3-lab/) |
+| 5 | fix-double-dpr-scaling-in-selection-canv | 2026-03-03 | d764c87 | [5-fix-double-dpr-scaling-in-selection-canv](./quick/5-fix-double-dpr-scaling-in-selection-canv/) |
 
 ### Blockers/Concerns
 
