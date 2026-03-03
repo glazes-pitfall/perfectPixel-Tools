@@ -224,8 +224,66 @@
     .palette-header .title { font-size: 12px; font-weight: 700; }
     .palette-header .chevron { font-size: 10px; color: var(--text-muted); transition: transform .2s; }
     .palette-header.open .chevron { transform: rotate(180deg); }
-    .palette-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+    .palette-body {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      max-height: 50vh;
+    }
     .palette-body.hidden { display: none; }
+    .pal-scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .pal-sticky-bottom {
+      flex-shrink: 0;
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .add-swatch {
+      width: 28px; height: 28px; border-radius: 4px; cursor: pointer;
+      border: 2px dashed #666; background: #555;
+      display: flex; align-items: center; justify-content: center;
+      color: #ccc; font-size: 18px; font-weight: 300; line-height: 1;
+      flex-shrink: 0; transition: border-color .1s, background .1s;
+      user-select: none;
+    }
+    .add-swatch:hover { border-color: var(--accent); background: #666; color: #fff; }
+    .combobox-row {
+      display: flex; gap: 4px; align-items: center;
+    }
+    .combobox-row input[type=text] {
+      flex: 1; padding: 5px 8px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text); font-size: 13px; min-width: 0;
+    }
+    .combobox-row input[type=text]:focus { border-color: var(--accent); outline: none; }
+    .combobox-drop-btn { padding: 5px 8px; font-size: 10px; }
+    .export-dropdown { position: relative; }
+    .export-menu {
+      position: absolute; right: 0; top: calc(100% + 4px);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; z-index: 200; min-width: 80px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.4);
+    }
+    .export-menu-item {
+      display: block; width: 100%; padding: 7px 12px; background: transparent;
+      border: none; color: var(--text); font-size: 12px; cursor: pointer;
+      text-align: left; border-bottom: 1px solid var(--border);
+    }
+    .export-menu-item:last-child { border-bottom: none; }
+    .export-menu-item:hover { background: rgba(124,106,247,.1); }
+    .mapping-row {
+      display: flex; align-items: center; gap: 8px;
+    }
 
     /* Toggle switch */
     .toggle-switch { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
@@ -339,17 +397,6 @@
     /* Export */
     .export-row { display: flex; gap: 5px; }
     .export-row .btn { flex: 1; font-size: 11px; padding: 6px 4px; }
-
-    /* Mapping modes */
-    .mode-group { display: flex; flex-direction: column; gap: 5px; }
-    .mode-option {
-      display: flex; align-items: flex-start; gap: 7px; cursor: pointer;
-      padding: 5px 7px; border-radius: 6px; border: 1px solid transparent; transition: border-color .15s;
-    }
-    .mode-option:has(input:checked) { border-color: var(--accent); background: rgba(124,106,247,.06); }
-    .mode-option input[type=radio] { accent-color: var(--accent); margin-top: 1px; cursor: pointer; flex-shrink: 0; }
-    .mode-option .mode-label { font-size: 12px; font-weight: 600; }
-    .mode-option .mode-desc { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 
     /* section-label (sub-heading within palette body) */
     .section-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
@@ -472,26 +519,51 @@
         <!-- ── 色卡限制 (Palette Restriction) Panel ── -->
         <div class="palette-section" id="paletteSection">
           <div class="palette-header" id="paletteHeader">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span class="title">色卡限制</span>
-              <label class="toggle-switch" onclick="event.stopPropagation()">
-                <input type="checkbox" id="paletteEnabled">
-                <div class="toggle-track"></div>
-              </label>
-            </div>
-            <span class="chevron">▼</span>
+            <span class="title">色卡限制</span>
+            <span class="chevron" id="palChevron">▼</span>
           </div>
 
           <div class="palette-body hidden" id="paletteBody">
 
-            <!-- Tabs: generate / upload -->
-            <div class="tabs">
-              <button class="tab-btn active" data-tab="generate">自动生成</button>
-              <button class="tab-btn" data-tab="upload">上传色卡</button>
-            </div>
+            <!-- 可滚动主区 -->
+            <div class="pal-scroll-area">
 
-            <!-- Tab: auto generate -->
-            <div class="tab-pane active" id="tab-generate">
+              <!-- 当前色卡 -->
+              <div>
+                <div class="swatches-label">
+                  <span class="section-label" style="margin:0;">当前色卡</span>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <span class="swatches-count" id="swatchCount">0 色</span>
+                    <div class="export-dropdown" id="exportDropdown">
+                      <button class="btn btn-ghost" id="exportDropBtn" style="font-size:11px;padding:3px 7px;" title="导出色卡">导出▼</button>
+                      <div class="export-menu" id="exportMenu" style="display:none;">
+                        <button class="export-menu-item" id="exportAct">.act</button>
+                        <button class="export-menu-item" id="exportGpl">.gpl</button>
+                        <button class="export-menu-item" id="exportPal">.pal</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin:3px 0 5px;">双击色块可更改颜色</div>
+                <div class="swatches-outer">
+                  <div class="swatches-grid" id="swatchesGrid">
+                    <span class="swatches-empty">色卡为空</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Combobox：命名 / 选择 / 保存 -->
+              <div style="position:relative;">
+                <div class="combobox-row">
+                  <input type="text" id="paletteName" placeholder="未命名色卡">
+                  <button class="btn btn-ghost combobox-drop-btn" id="palDropBtn" title="选择/上传色卡">▼</button>
+                  <button class="btn btn-ghost" id="savePaletteBtn" title="保存色卡">💾</button>
+                </div>
+                <div class="custom-select-options" id="savedPaletteOptions" style="display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:100;"></div>
+                <input type="file" id="palFileInput" accept=".act,.gpl,.pal,.png" style="display:none;">
+              </div>
+
+              <!-- 生成区 -->
               <div style="display:flex;flex-direction:column;gap:8px;">
                 <div class="control-group">
                   <label>颜色数量</label>
@@ -503,9 +575,9 @@
                 <div class="control-group">
                   <label>生成算法</label>
                   <select id="genAlgorithm" style="padding:4px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
-                    <option value="fastoctree">快速八叉树（默认，速度最快）</option>
-                    <option value="mediancut">中值切割（均衡分配色彩空间）</option>
-                    <option value="boost">覆盖增强（智能识别小色块区域）★</option>
+                    <option value="fastoctree">快速八叉树（默认）</option>
+                    <option value="mediancut">中值切割</option>
+                    <option value="boost">覆盖增强 ★</option>
                   </select>
                 </div>
                 <div id="boostParams" class="control-group" style="display:none;">
@@ -518,91 +590,21 @@
                 </div>
                 <button class="btn btn-secondary" id="generateBtn" style="width:100%;">生成色卡</button>
               </div>
-            </div>
 
-            <!-- Tab: upload palette -->
-            <div class="tab-pane" id="tab-upload">
-              <div class="pal-upload-zone" id="palUploadZone">
-                <input type="file" id="palFileInput" accept=".act,.gpl,.pal,.png">
-                <div>上传 .act .gpl .pal .png</div>
-                <div id="palFilename" style="margin-top:4px;font-size:11px;color:var(--accent);"></div>
-              </div>
-            </div>
+            </div><!-- /pal-scroll-area -->
 
-            <!-- Current palette swatches -->
-            <div>
-              <div class="swatches-label">
-                <span class="section-label" style="margin:0;">当前色卡</span>
-                <span class="swatches-count" id="swatchCount">0 色</span>
+            <!-- 固定底部：映射模式 + 应用色卡 -->
+            <div class="pal-sticky-bottom">
+              <div class="mapping-row">
+                <span class="section-label" style="margin:0; white-space:nowrap;">映射</span>
+                <select id="mappingModeSelect" style="flex:1; padding:4px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
+                  <option value="vector">向量匹配（RGB 欧氏距离）</option>
+                  <option value="perceptual">感知匹配（LAB 色彩空间）</option>
+                  <option value="swap">色卡替换（量化防扎堆）</option>
+                </select>
               </div>
-              <div class="swatches-outer">
-                <div class="swatches-grid" id="swatchesGrid">
-                  <span class="swatches-empty">色卡为空</span>
-                </div>
-              </div>
-              <button class="btn btn-ghost" id="addColorBtn" style="margin-top:6px;width:100%;">+ 添加颜色</button>
+              <button class="btn btn-primary" id="applyPaletteBtn" disabled style="width:100%;">应用色卡</button>
             </div>
-
-            <!-- Save / load -->
-            <div>
-              <div class="section-label">保存 / 加载</div>
-              <div class="save-row">
-                <input type="text" id="paletteName" placeholder="色卡名称...">
-                <button class="btn btn-secondary" id="savePaletteBtn" style="flex-shrink:0;">保存</button>
-              </div>
-              <!-- Custom dropdown replaces <select> -->
-              <div class="custom-select" id="savedPalettesDropdown" style="margin-top:6px;">
-                <div class="custom-select-trigger" id="savedPaletteTrigger">
-                  <span id="savedPaletteTriggerText">— 选择已保存色卡 —</span>
-                  <span class="caret">▼</span>
-                </div>
-                <div class="custom-select-options" id="savedPaletteOptions"></div>
-              </div>
-              <div style="display:flex;gap:6px;margin-top:6px;">
-                <button class="btn btn-secondary" id="loadPaletteBtn" style="flex:1;font-size:12px;">加载</button>
-                <button class="btn btn-secondary" id="deletePaletteBtn" style="flex:1;font-size:12px;color:var(--error);">删除</button>
-              </div>
-            </div>
-
-            <!-- Mapping mode -->
-            <div>
-              <div class="section-label">映射模式</div>
-              <div class="mode-group">
-                <label class="mode-option">
-                  <input type="radio" name="mappingMode" value="vector" checked>
-                  <div>
-                    <div class="mode-label">向量匹配</div>
-                    <div class="mode-desc">RGB 欧氏距离，最直接</div>
-                  </div>
-                </label>
-                <label class="mode-option">
-                  <input type="radio" name="mappingMode" value="perceptual">
-                  <div>
-                    <div class="mode-label">感知匹配</div>
-                    <div class="mode-desc">LAB 色彩空间，更符合人眼感知</div>
-                  </div>
-                </label>
-                <label class="mode-option">
-                  <input type="radio" name="mappingMode" value="swap">
-                  <div>
-                    <div class="mode-label">色卡替换</div>
-                    <div class="mode-desc">先量化图像生成中间调色板，防止相近色扎堆映射</div>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <!-- Export -->
-            <div>
-              <div class="section-label">导出</div>
-              <div class="export-row">
-                <button class="btn btn-ghost" id="exportAct">.act</button>
-                <button class="btn btn-ghost" id="exportGpl">.gpl</button>
-                <button class="btn btn-ghost" id="exportPal">.pal</button>
-              </div>
-            </div>
-
-            <button class="btn btn-primary" id="applyPaletteBtn" disabled>应用色卡</button>
 
           </div><!-- /palette-body -->
         </div><!-- /palette-section -->
@@ -1610,9 +1612,8 @@
       EditorState.palette = currentPalette.slice();
       renderSwatches();
       const applyBtn = document.getElementById('applyPaletteBtn');
-      const palEnabled = document.getElementById('paletteEnabled');
-      if (applyBtn && palEnabled) {
-        applyBtn.disabled = !palEnabled.checked || !EditorState.pixels || currentPalette.length === 0;
+      if (applyBtn) {
+        applyBtn.disabled = !EditorState.pixels || currentPalette.length === 0;
       }
     }
 
@@ -2621,33 +2622,6 @@
         });
       }
 
-      // paletteEnabled toggle: ON → auto-expand; update applyPaletteBtn gate
-      const paletteEnabled = document.getElementById('paletteEnabled');
-      if (paletteEnabled) {
-        paletteEnabled.addEventListener('change', () => {
-          const on = paletteEnabled.checked;
-          if (on && paletteBody) {
-            paletteBody.classList.remove('hidden');
-            if (paletteHeader) paletteHeader.classList.add('open');
-          }
-          const applyBtn = document.getElementById('applyPaletteBtn');
-          if (applyBtn) {
-            applyBtn.disabled = !on || !EditorState.pixels || currentPalette.length === 0;
-          }
-        });
-      }
-
-      // Tabs: 自动生成 / 上传色卡
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-          document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-          btn.classList.add('active');
-          const pane = document.getElementById('tab-' + btn.dataset.tab);
-          if (pane) pane.classList.add('active');
-        });
-      });
-
       // nColors slider ↔ number input sync
       const nColorsSlider = document.getElementById('nColors');
       const nColorsInput  = document.getElementById('nColorsInput');
@@ -2747,18 +2721,6 @@
           e.preventDefault(); palUploadZoneEl.classList.remove('dragover');
           const file = e.dataTransfer.files[0];
           if (file) await uploadPaletteFile(file);
-        });
-      }
-
-      // Add color button
-      const addColorBtnEl = document.getElementById('addColorBtn');
-      if (addColorBtnEl) {
-        addColorBtnEl.addEventListener('click', () => {
-          currentPalette.push([128, 128, 128]);
-          EditorState.palette = currentPalette.slice();
-          renderSwatches();
-          const lastSwatch = document.getElementById('swatchesGrid').lastElementChild;
-          if (lastSwatch) openColorEditor(currentPalette.length - 1, lastSwatch);
         });
       }
 
