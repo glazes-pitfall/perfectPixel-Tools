@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 Phase: 4 of 7 (Palette Panel) + Phase 5 (Selection Tools) running in parallel
 Plan: Phase 4 Plan 3/3 checkpoint reached (awaiting human verification); Phase 5 Plan 3/4 complete
 Status: Phase 4 Plan 03 checkpoint — awaiting human verification of PAL-01, PAL-02, UI-03, web_ui.html deletion; Phase 5 Plan 03 done
-Last activity: 2026-03-03 - Completed quick task 5: fix double DPR scaling in selection canvas drawAnts and marquee preview
+Last activity: 2026-03-03 - Completed quick task 6: replace marching ants with static checkerboard border; fix marquee preview corner gaps
 
 Progress: [████████████] 56%
 
@@ -126,6 +126,7 @@ None yet.
 | 3 | applypalette-undo | 2026-03-03 | 350f218 | [3-applypalette-undo](./quick/3-applypalette-undo/) |
 | 4 | 4-3-lab mapping modes | 2026-03-03 | 4d396f5 | [4-3-lab](./quick/4-3-lab/) |
 | 5 | fix-double-dpr-scaling-in-selection-canv | 2026-03-03 | d764c87 | [5-fix-double-dpr-scaling-in-selection-canv](./quick/5-fix-double-dpr-scaling-in-selection-canv/) |
+| 6 | fix-selection-visual-remove-dashes-corne | 2026-03-03 | eb2675d | [6-fix-selection-visual-remove-dashes-corne](./quick/6-fix-selection-visual-remove-dashes-corne/) |
 
 ### Blockers/Concerns
 
