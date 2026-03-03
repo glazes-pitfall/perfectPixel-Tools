@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T19:09:53.786Z"
+last_updated: "2026-03-03T19:14:56.773Z"
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 24
-  completed_plans: 20
+  completed_plans: 21
 ---
 
 # Project State
@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: Phase 6 (Transform) — Plan 01 complete; Plan 02 (handle scale) next
-Plan: 06-01 DONE — Move(V) tool + transformState infrastructure + distance label; 06-02 next
-Status: Phase 6 in progress — Move tool floating model complete; handle scale + RotSprite remaining
-Last activity: 2026-03-04 - Completed 06-01 Move tool with transform infrastructure (commit 2376ffc)
+Phase: Phase 6 (Transform) — Plan 02 complete; Plan 03 (RotSprite rotation) next
+Plan: 06-02 DONE — 8-handle bounding box scale system; 06-03 next
+Status: Phase 6 in progress — Move + scale complete; RotSprite rotation remaining
+Last activity: 2026-03-04 - Completed 06-02 8-handle scale system (commits defe6d3, 770117e)
 
 Progress: [████████████] 56%
 
@@ -64,6 +64,7 @@ Progress: [████████████] 56%
 | Phase 05.1 P01 | 8 | 2 tasks | 1 files |
 | Phase 04.2-palette-ui P02 | 15 | 3 tasks | 1 files |
 | Phase 06-transform P01 | 4 | 1 tasks | 1 files |
+| Phase 06-transform P02 | 3 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,9 @@ Recent decisions affecting current work:
 - [Phase 06-01]: tools.move assigned after tools dict init (inside DOMContentLoaded) — avoids hoisting issues
 - [Phase 06-01]: activateTransform snapshots originalPixels BEFORE erasing — required for ESC restore correctness
 - [Phase 06-01]: applyTransform calls pushHistory() once for entire compound transform — one undo step
+- [Phase 06-transform]: _origFloatPixels captured at handle drag start — avoids quality degradation on repeated drags
+- [Phase 06-transform]: hitTestHandle hit zone 12px vs 8px visual for usability on small selections
+- [Phase 06-transform]: Lock checkbox uses one-way value sync to prevent debounce recursion in scale inputs
 
 ### Pending Todos
 
