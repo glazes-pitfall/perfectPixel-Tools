@@ -1145,10 +1145,8 @@
       document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
         btn.classList.toggle('tool-btn-active', btn.dataset.tool === name);
       });
-      // Auto-activate transform when switching to move tool with an active selection
-      if (name === 'move' && EditorState.selectionMask && !EditorState.transformState) {
-        if (typeof activateTransform === 'function') activateTransform();
-      }
+      // Auto-activate transform when switching to move tool (hook bridges outer→inner scope)
+      if (name === 'move' && _onMoveToolSelected) _onMoveToolSelected();
       updateSelectionUI();
       // Show/hide tool settings panels
       const panelIds = ['tool-settings-pencil', 'tool-settings-eraser', 'tool-settings-bucket',
@@ -1200,6 +1198,9 @@
       // Hide selection buttons when move tool is active (floating selection ≠ marquee selection)
       if (btnDeselect) btnDeselect.style.display = (hasSelection && !isMoveActive) ? '' : 'none';
       if (btnInverse)  btnInverse.style.display  = (hasSelection && !isMoveActive) ? '' : 'none';
+      // Move button: only enabled when there is a selection or transform is active
+      const btnMove = document.querySelector('.tool-btn[data-tool="move"]');
+      if (btnMove) btnMove.disabled = !(hasSelection || !!EditorState.transformState);
     }
 
     function clearSelection() {
@@ -1780,6 +1781,10 @@
     // _drawTransformUI is defined inside DOMContentLoaded; applyZoom is in outer scope.
     let _onZoomChanged = null;
 
+    // Hook: called by setActiveTool (outer scope) to activate transform when switching to
+    // Move tool. activateTransform is defined inside DOMContentLoaded so it needs bridging.
+    let _onMoveToolSelected = null;
+
     /**
      * Apply a new zoom level, keeping the given viewport point stationary.
      * Uses CSS transform: scale() on #zoom-container. Range: 0.25x–64x (fractional).
@@ -2323,6 +2328,13 @@
         if (!EditorState.pixels) return;
         isDrawing = true;
         const [cx, cy] = viewportToCanvas(e.clientX, e.clientY);
+        // Auto-switch to Move when dragging inside a selection with a selection tool
+        const selTool = EditorState.activeTool === 'marquee' || EditorState.activeTool === 'wand';
+        if (selTool && EditorState.selectionMask && !EditorState.transformState && isSelectedPixel(cx, cy)) {
+          setActiveTool('move');  // _onMoveToolSelected activates transform
+          tools.move?.onDown(cx, cy, e);
+          return;
+        }
         tools[EditorState.activeTool]?.onDown(cx, cy, e);
       });
       cursorCanvas.addEventListener('pointermove', e => {
@@ -3111,8 +3123,11 @@
         const rad = -angleDeg * Math.PI / 180;
         const cos = Math.cos(rad), sin = Math.sin(rad);
         const absCos = Math.abs(cos), absSin = Math.abs(sin);
-        const outBw = Math.ceil(bw * absCos + bh * absSin);
-        const outBh = Math.ceil(bw * absSin + bh * absCos);
+        // Subtract tiny epsilon before ceil to avoid fp noise (e.g. cos(90°) ≈ 6e-17 → adds
+        // 1 spurious transparent pixel column at exact multiples of 90°).
+        const EPS = 1e-9;
+        const outBw = Math.ceil(bw * absCos + bh * absSin - EPS);
+        const outBh = Math.ceil(bw * absSin + bh * absCos - EPS);
         const icx = bw / 2, icy = bh / 2;
         const ocx = outBw / 2, ocy = outBh / 2;
 
@@ -3130,8 +3145,8 @@
             }
           }
         }
-        const outW = Math.ceil(w * absCos + h * absSin);
-        const outH = Math.ceil(w * absSin + h * absCos);
+        const outW = Math.ceil(w * absCos + h * absSin - EPS);
+        const outH = Math.ceil(w * absSin + h * absCos - EPS);
         const out = new Uint8ClampedArray(outW * outH * 4);
         for (let oy = 0; oy < outH; oy++) {
           for (let ox = 0; ox < outW; ox++) {
@@ -3456,6 +3471,8 @@
         // B3 fix: disable selCanvas pointer capture now that transform is cancelled
         selCanvas.style.pointerEvents = 'none';
         selCanvas.removeEventListener('pointerdown', _selCanvasPointerDown);
+        // Return to marquee tool — no selection remains after cancel
+        if (EditorState.activeTool === 'move') setActiveTool('marquee');
       }
 
       // ── tools.move ────────────────────────────────────────────────────────────
@@ -3756,6 +3773,12 @@
         if (EditorState.transformState) _drawTransformUI();
       };
 
+      // Wire move-tool hook: activates transform when setActiveTool('move') is called
+      // from outer scope (setActiveTool can't directly call activateTransform here).
+      _onMoveToolSelected = () => {
+        if (EditorState.selectionMask && !EditorState.transformState) activateTransform();
+      };
+
       // ── Zoom controls (all via applyZoom — scroll-adjusted) ──────────────────
       // canvasArea: receives wheel events (entire area incl. result panel)
       // zoomScrollEl: actual scroll container for canvas pan/zoom
@@ -3871,7 +3894,10 @@
           if (e.key === 'i' || e.key === 'I') setActiveTool('eyedropper');
           if (e.key === 'm' || e.key === 'M') setActiveTool('marquee');
           if (e.key === 'w' || e.key === 'W') setActiveTool('wand');
-          if (e.key === 'v' || e.key === 'V') setActiveTool('move');
+          if (e.key === 'v' || e.key === 'V') {
+            // Only switch to Move when a selection or active transform exists
+            if (EditorState.selectionMask || EditorState.transformState) setActiveTool('move');
+          }
         }
         // Enter → apply transform (if active)
         if (e.key === 'Enter' && EditorState.transformState) {
