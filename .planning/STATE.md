@@ -117,6 +117,9 @@ Recent decisions affecting current work:
 - [Phase 04.2-palette-ui]: [04.2-01]: flex-shrink:0 for pal-sticky-bottom instead of position:sticky — .palette-section overflow:hidden breaks sticky
 - [Phase 04.2-palette-ui]: [04.2-01]: mappingModeSelect as <select> replaces 3 radio cards — compact for narrow left panel
 - [Phase 04.2-palette-ui]: [04.2-01]: paletteEnabled toggle removed from palette-header — no on/off gate needed for palette panel
+- [Phase 04.2-palette-ui]: [04.2-02]: refreshSavedDropdown empty-state branch also appends upload option — ensures upload always reachable via combobox dropdown
+- [Phase 04.2-palette-ui]: [04.2-02]: loadPaletteBtnEl logic moved into refreshSavedDropdown click handler (load-on-select); deletePaletteBtn not implemented (D4 decision)
+- [Phase 04.2-palette-ui]: [04.2-02]: dropdown toggle uses style.display (not classList.toggle('open')) — consistent with Plan 01 exportMenu HTML pattern
 
 ### Pending Todos
 
@@ -142,6 +145,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-03
-Stopped at: Reached 04-03 checkpoint — Phase 4 visual verification (PAL-01, PAL-02, UI-03, web_ui.html deletion)
-Next: User approves 04-03 checkpoint → Phase 4 complete; then Phase 5 Plan 04 or Phase 6
+Stopped at: Reached 04.2-02 checkpoint — awaiting human verification of palette panel JS bindings (palDropBtn, exportDropBtn, add-swatch, refreshSavedDropdown load-on-select, mappingModeSelect)
+Next: User approves 04.2-02 checkpoint → Phase 04.2 complete; then Phase 5 or 6
 Resume file: None
