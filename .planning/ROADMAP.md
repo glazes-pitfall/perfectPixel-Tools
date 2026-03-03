@@ -41,7 +41,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Editor page structure, pixel buffer, coordinate system, and zoom infrastructure
 - [x] **Phase 2: History** - Snapshot-based undo/redo covering all editor operations
-- [ ] **Phase 3: Core Tools** - Pencil, Eraser, Paint Bucket tools with integrated color picker
+- [x] **Phase 3: Core Tools** - Pencil, Eraser, Paint Bucket tools with integrated color picker
 - [ ] **Phase 4: Palette Panel** ⟋ **(parallel with Phase 5)** - Palette swatch integration with bidirectional color picker sync
 - [ ] **Phase 5: Selection Tools** ⟋ **(parallel with Phase 4)** - Rectangle Marquee and Magic Wand with animated marching ants
 - [ ] **Phase 6: Transform** - Move, 8-handle scale, and RotSprite rotation on selections
@@ -59,6 +59,8 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The 4-panel layout (left bar, central canvas, right toolbox, top bar) is visible and structurally complete, matching the Ver 1.1 dark theme
   4. Clicking any pixel on the canvas returns the exact RGBA value from `EditorState.pixels` (not from the canvas element), confirming premultiplied-alpha isolation is in place
 **Plans**: 3 plans
+
+**Permanent feature note**: 像素检查器（Pixel Inspector）是永久功能，不是脚手架。悬停于画布时实时显示当前像素的 X/Y 坐标及 RGBA 四通道值。后续阶段不得移除。
 
 Plans:
 - [x] 01-01-PLAN.md — Flask 路由注册 + editor.html 4 面板布局骨架（CSS + HTML 结构）
@@ -86,6 +88,7 @@ Plans:
 **Depends on**: Phase 2
 **Requirements**: DRAW-01, DRAW-02, DRAW-03, DRAW-04, DRAW-05, DRAW-06, CLR-01, CLR-02, CLR-03, CLR-04
 **Implementation note**: First task of this phase is to remove the Phase 2 temporary test scaffold (the canvas click listener used for history verification). History convention (established in Phase 2): use the "save-after" model — call `pushHistory()` **after** pixel changes are applied, not before. For stroke tools (Pencil, Eraser), call `pushHistory()` on `pointerup` (after stroke completes), not on `pointerdown`. For instant-apply tools (Paint Bucket), call `pushHistory()` immediately after the fill operation.
+**Eyedropper (取色器) implementation**: 优先使用浏览器原生 `EyeDropper` Web API（Chrome 95+/Edge 95+），可跨整个屏幕取色，包括编辑器 UI 区域及浏览器窗口外。在不支持该 API 的浏览器（Firefox/Safari）中自动降级为画布内取色模式。取色完成后自动恢复上一个激活工具，无需手动切换。
 **Success Criteria** (what must be TRUE):
   1. The Phase 2 test scaffold (temporary click listener) has been removed from the codebase
   2. User can draw on the canvas with Pencil (B) using round or square brush shapes at any integer diameter from 1px up, and each stroke is one undo step
@@ -96,10 +99,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — 移除 Phase 2 脚手架 + 工具调度基础设施 + 铅笔工具 + 橡皮工具
-- [ ] 03-02-PLAN.md — Paint Bucket 工具（BFS 填充）+ 顶栏工具参数 UI
-- [ ] 03-03-PLAN.md — 常驻调色盘：HSL 色轮 + Hex/RGB 输入 + 取色器工具
-- [ ] 03-04-PLAN.md — Playwright 自动化验证 + 人工目视验证检查点
+- [x] 03-01-PLAN.md — 移除 Phase 2 脚手架 + 工具调度基础设施 + 铅笔工具 + 橡皮工具
+- [x] 03-02-PLAN.md — Paint Bucket 工具（BFS 填充）+ 顶栏工具参数 UI
+- [x] 03-03-PLAN.md — 常驻调色盘：HSL 色轮 + Hex/RGB 输入 + 取色器工具
+- [x] 03-04-PLAN.md — Playwright 自动化验证 + 人工目视验证检查点
 
 ### Phase 4: Palette Panel
 **Goal**: The Ver 1.1 palette system is available inside the editor and stays in sync with the active drawing color
@@ -109,7 +112,12 @@ Plans:
   1. Clicking a swatch in the palette panel immediately updates the color picker to that color, ready for drawing
   2. When the color picker's active color matches a palette swatch, that swatch displays a visible highlight border
   3. The palette panel can be collapsed and expanded without losing palette state
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — 色卡面板 HTML/CSS 移植 + JS 核心函数 + PAL-01 swatch 点击同步
+- [ ] 04-02-PLAN.md — PAL-02 发光高亮 + applyPalette 结果预览面板 + web_ui.html 色卡代码删除
+- [ ] 04-03-PLAN.md — 浏览器目视验证检查点（Phase 4 成功标准全部确认）
 
 ### Phase 5: Selection Tools
 **Goal**: User can isolate a region of the canvas using Rectangle Marquee or Magic Wand, and drawing tools respect the selection boundary
@@ -155,8 +163,8 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete | 2026-03-02 |
 | 2. History | 2/2 | Complete | 2026-03-03 |
-| 3. Core Tools | 3/4 | In Progress|  |
-| 4. Palette Panel | 0/TBD | Not started | - |
+| 3. Core Tools | 4/4 | Complete | 2026-03-03 |
+| 4. Palette Panel | 0/3 | Not started | - |
 | 5. Selection Tools | 0/TBD | Not started | - |
 | 6. Transform | 0/TBD | Not started | - |
 | 7. Integration | 0/TBD | Not started | - |
