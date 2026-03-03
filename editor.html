@@ -1649,6 +1649,18 @@
         sw.addEventListener('dblclick', e => { e.stopPropagation(); openColorEditor(idx, sw); });
         grid.appendChild(sw);
       });
+      // 追加 + 色块（.add-swatch）— Phase 4.2
+      const addSwEl = document.createElement('div');
+      addSwEl.className = 'add-swatch';
+      addSwEl.title = '添加当前前景色到色卡';
+      addSwEl.textContent = '+';
+      addSwEl.addEventListener('click', () => {
+        const [r, g, b] = EditorState.foregroundColor;
+        currentPalette.push([r, g, b]);
+        EditorState.palette = currentPalette.slice();
+        renderSwatches();
+      });
+      grid.appendChild(addSwEl);
       if (typeof highlightMatchingSwatches === 'function') highlightMatchingSwatches();
     }
 
@@ -1755,6 +1767,17 @@
 
       if (keys.length === 0) {
         opts.innerHTML = '<div class="custom-option-empty">暂无已保存的色卡</div>';
+        // 即使无已保存色卡，仍提供上传入口
+        const uploadOptEmptyEl = document.createElement('div');
+        uploadOptEmptyEl.className = 'custom-option';
+        uploadOptEmptyEl.style.borderTop = '1px solid var(--border)';
+        uploadOptEmptyEl.innerHTML = '<span style="font-size:12px; color:var(--text-muted);">📁 从本地上传</span>';
+        uploadOptEmptyEl.addEventListener('click', () => {
+          opts.style.display = 'none';
+          const palFileInputEl = document.getElementById('palFileInput');
+          if (palFileInputEl) palFileInputEl.click();
+        });
+        opts.appendChild(uploadOptEmptyEl);
         return;
       }
 
@@ -1780,16 +1803,28 @@
         div.appendChild(swatchesEl);
         div.addEventListener('click', () => {
           selectedPaletteKey = name;
-          const trigText = document.getElementById('savedPaletteTriggerText');
-          if (trigText) trigText.textContent = `${name}  (${palette.length} 色)`;
-          const dd = document.getElementById('savedPalettesDropdown');
-          if (dd) dd.classList.remove('open');
-          document.querySelectorAll('.custom-option').forEach(o =>
-            o.classList.toggle('selected', o.dataset.key === name)
-          );
+          const paletteNameInputEl = document.getElementById('paletteName');
+          if (paletteNameInputEl) paletteNameInputEl.value = name;
+          setCurrentPalette(palette);
+          const savedPaletteOptionsEl = document.getElementById('savedPaletteOptions');
+          if (savedPaletteOptionsEl) savedPaletteOptionsEl.style.display = 'none';
+          palShowStatus(`已加载色卡「${name}」：${palette.length} 色`, 'success');
         });
         opts.appendChild(div);
       });
+
+      // 底部上传选项
+      const uploadOptEl = document.createElement('div');
+      uploadOptEl.className = 'custom-option';
+      uploadOptEl.style.borderTop = '1px solid var(--border)';
+      uploadOptEl.innerHTML = '<span style="font-size:12px; color:var(--text-muted);">📁 从本地上传</span>';
+      uploadOptEl.addEventListener('click', () => {
+        const savedPaletteOptionsEl = document.getElementById('savedPaletteOptions');
+        if (savedPaletteOptionsEl) savedPaletteOptionsEl.style.display = 'none';
+        const palFileInputEl = document.getElementById('palFileInput');
+        if (palFileInputEl) palFileInputEl.click();
+      });
+      opts.appendChild(uploadOptEl);
     }
 
     // ── Palette file upload ────────────────────────────────────────────────────
