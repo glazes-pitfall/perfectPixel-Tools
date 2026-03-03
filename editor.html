@@ -1103,6 +1103,7 @@
       historyIndex: -1,
       MAX_HISTORY: 100,
       palette: [],                // [[r,g,b], ...] — same format as web_ui.html
+      filename: '',               // 原始文件名，用于下载命名
 
       // Minimal pub/sub (no library needed)
       _listeners: {},
@@ -1817,6 +1818,91 @@
     }
 
     /**
+     * Load image from base64 string into editor.
+     * This is the only place getImageData is called — all subsequent reads
+     * go through EditorState.pixels (avoids premultiplied alpha corruption).
+     */
+    async function loadImageFromB64(b64) {
+      const blob   = await (await fetch('data:image/png;base64,' + b64)).blob();
+      const bitmap = await createImageBitmap(blob);
+      const { width, height } = bitmap;
+      initCanvases(width, height);
+      pixelCtx.drawImage(bitmap, 0, 0);
+      const imageData = pixelCtx.getImageData(0, 0, width, height);
+      EditorState.pixels = imageData.data.slice();
+      clearSelection();
+      flushPixels();
+      bitmap.close();
+    }
+
+    /**
+     * Show drag-and-drop upload zone in the canvas area.
+     */
+    function showDropZone() {
+      const canvasArea = document.getElementById('canvas-area');
+      const zone = document.createElement('div');
+      zone.id = 'drop-zone';
+      zone.style.cssText = 'position:absolute;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;cursor:pointer;background:var(--surface);';
+      zone.innerHTML = '<div style="font-size:48px;">🖼️</div><div style="font-size:16px;color:var(--text-muted);">点击或拖拽图片到此处</div><div style="font-size:12px;color:var(--text-muted);">支持 PNG / JPG / WEBP 等格式</div>';
+      canvasArea.appendChild(zone);
+
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file'; fileInput.accept = 'image/*'; fileInput.style.display = 'none';
+      canvasArea.appendChild(fileInput);
+
+      zone.addEventListener('click', () => fileInput.click());
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files[0]) handleFileUpload(fileInput.files[0]);
+      });
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.background = 'rgba(124,106,247,.08)'; });
+      zone.addEventListener('dragleave', () => { zone.style.background = 'var(--surface)'; });
+      zone.addEventListener('drop', e => {
+        e.preventDefault();
+        const f = e.dataTransfer.files[0];
+        if (f && f.type.startsWith('image/')) handleFileUpload(f);
+      });
+    }
+
+    async function handleFileUpload(file) {
+      EditorState.filename = file.name;
+      const reader = new FileReader();
+      reader.onload = async e => {
+        const b64 = e.target.result.replace(/^data:image\/\w+;base64,/, '');
+        document.getElementById('drop-zone')?.remove();
+        await loadImageFromB64(b64);
+        pushHistory();
+        bindPostLoadEvents();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    let _postLoadEventsBound = false;
+    function bindPostLoadEvents() {
+      if (_postLoadEventsBound) return;  // 防重复绑定
+      _postLoadEventsBound = true;
+      // pixel inspector（pointermove）
+      cursorCanvas.addEventListener('pointermove', e => {
+        if (!EditorState.pixels) return;
+        const [cx, cy] = viewportToCanvas(e.clientX, e.clientY);
+        const [r, g, b, a] = getPixel(cx, cy);
+        document.getElementById('insp-x').textContent = cx;
+        document.getElementById('insp-y').textContent = cy;
+        document.getElementById('insp-r').textContent = r;
+        document.getElementById('insp-g').textContent = g;
+        document.getElementById('insp-b').textContent = b;
+        document.getElementById('insp-a').textContent = a;
+        document.getElementById('insp-swatch').style.background =
+          `rgba(${r},${g},${b},${a / 255})`;
+      });
+      cursorCanvas.addEventListener('pointerleave', () => {
+        ['insp-x', 'insp-y', 'insp-r', 'insp-g', 'insp-b', 'insp-a'].forEach(id => {
+          document.getElementById(id).textContent = '—';
+        });
+        document.getElementById('insp-swatch').style.background = 'transparent';
+      });
+    }
+
+    /**
      * Fetch /output.png, decode to ImageData, store in EditorState.pixels,
      * call initCanvases(), then flushPixels().
      * This is the only place getImageData is called — all subsequent reads
@@ -2278,33 +2364,22 @@
       selCanvas    = document.getElementById('selection-canvas');
       cursorCanvas = document.getElementById('cursor-canvas');
 
-      // Load image; wire pixel-inspector and pointer events after image is ready
-      loadPlaceholderImage().then(() => {
-        // Save initial state as history[0] so undo can return to it
-        pushHistory();
-        // ── Pixel Inspector (reads EditorState.pixels — never canvas) ─────────
-        cursorCanvas.addEventListener('pointermove', e => {
-          if (!EditorState.pixels) return;
-          const [cx, cy] = viewportToCanvas(e.clientX, e.clientY);
-          const [r, g, b, a] = getPixel(cx, cy);
-          document.getElementById('insp-x').textContent = cx;
-          document.getElementById('insp-y').textContent = cy;
-          document.getElementById('insp-r').textContent = r;
-          document.getElementById('insp-g').textContent = g;
-          document.getElementById('insp-b').textContent = b;
-          document.getElementById('insp-a').textContent = a;
-          document.getElementById('insp-swatch').style.background =
-            `rgba(${r},${g},${b},${a / 255})`;
+      // ── sessionStorage 握手：从 web_ui.html 传递的图片 ───────────────────────
+      const _storedImage    = sessionStorage.getItem('editorImage');
+      const _storedFilename = sessionStorage.getItem('editorFilename');
+      if (_storedImage) {
+        sessionStorage.removeItem('editorImage');     // 立即清除，防刷新重复加载
+        sessionStorage.removeItem('editorFilename');
+        EditorState.filename = _storedFilename || '';
+        loadImageFromB64(_storedImage).then(() => {
+          pushHistory();
+          bindPostLoadEvents();
         });
-
-        // Reset inspector when cursor leaves canvas
-        cursorCanvas.addEventListener('pointerleave', () => {
-          ['insp-x', 'insp-y', 'insp-r', 'insp-g', 'insp-b', 'insp-a'].forEach(id => {
-            document.getElementById(id).textContent = '—';
-          });
-          document.getElementById('insp-swatch').style.background = 'transparent';
-        });
-      });
+      } else {
+        // 无 sessionStorage 数据：显示拖拽上传界面
+        showDropZone();
+        // 注意：bindPostLoadEvents() 由 handleFileUpload 在加载完成后调用
+      }
 
       // Initialize history button references and event listeners
       initHistoryButtons();
