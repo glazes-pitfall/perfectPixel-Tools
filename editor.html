@@ -1145,6 +1145,11 @@
       document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
         btn.classList.toggle('tool-btn-active', btn.dataset.tool === name);
       });
+      // Auto-activate transform when switching to move tool with an active selection
+      if (name === 'move' && EditorState.selectionMask && !EditorState.transformState) {
+        if (typeof activateTransform === 'function') activateTransform();
+      }
+      updateSelectionUI();
       // Show/hide tool settings panels
       const panelIds = ['tool-settings-pencil', 'tool-settings-eraser', 'tool-settings-bucket',
                         'tool-settings-marquee', 'tool-settings-wand', 'tool-settings-move'];
@@ -1189,10 +1194,12 @@
 
     function updateSelectionUI() {
       const hasSelection = !!EditorState.selectionMask;
+      const isMoveActive = EditorState.activeTool === 'move';
       const btnDeselect = document.getElementById('btn-deselect');
       const btnInverse  = document.getElementById('btn-inverse');
-      if (btnDeselect) btnDeselect.style.display = hasSelection ? '' : 'none';
-      if (btnInverse)  btnInverse.style.display  = hasSelection ? '' : 'none';
+      // Hide selection buttons when move tool is active (floating selection ≠ marquee selection)
+      if (btnDeselect) btnDeselect.style.display = (hasSelection && !isMoveActive) ? '' : 'none';
+      if (btnInverse)  btnInverse.style.display  = (hasSelection && !isMoveActive) ? '' : 'none';
     }
 
     function clearSelection() {
@@ -3141,7 +3148,8 @@
 
       // ── Plan 06-03: _applyRotationPreview ────────────────────────────────────
       // Live preview during drag: rotates from _baseFloatPixels (never compounds),
-      // keeps bbox at scaledW × scaledH (no expansion), centers on _rotatePivot.
+      // expands floatW/H to full rotated bbox so all pixels stay visible.
+      // _borderRect = nominal (scaledW×scaledH) bbox — used for handles/border.
       // Compound order: scale first, then rotate.
       function _applyRotationPreview() {
         const ts = EditorState.transformState;
@@ -3176,15 +3184,21 @@
           ts._rotatePivot = { x: ts.floatX + ts.floatW / 2, y: ts.floatY + ts.floatH / 2 };
         }
 
-        // Rotate (same-size output — no bbox expansion during live drag)
-        const rotated = rotSprite(scaledPx, scaledW, scaledH, angleDeg);
+        // Use expanded RotSprite so all rotated pixels are visible during drag
+        const result = _rotSpriteExpanded(scaledPx, scaledW, scaledH, angleDeg);
 
-        // Place result centered on the fixed pivot; bbox stays scaledW × scaledH
-        ts.floatPixels = rotated;
-        ts.floatW      = scaledW;
-        ts.floatH      = scaledH;
-        ts.floatX      = ts._rotatePivot.x - scaledW / 2;
-        ts.floatY      = ts._rotatePivot.y - scaledH / 2;
+        // floatX/Y/W/H = expanded pixel area; _borderRect = nominal handle area
+        ts.floatPixels = result.pixels;
+        ts.floatW      = result.w;
+        ts.floatH      = result.h;
+        ts.floatX      = ts._rotatePivot.x - result.w / 2;
+        ts.floatY      = ts._rotatePivot.y - result.h / 2;
+        ts._borderRect = {
+          x: ts._rotatePivot.x - scaledW / 2,
+          y: ts._rotatePivot.y - scaledH / 2,
+          w: scaledW,
+          h: scaledH,
+        };
 
         _drawTransformUI();
       }
@@ -3218,6 +3232,7 @@
         ts.floatH      = result.h;
         ts.floatX      = piv.x - result.w / 2;
         ts.floatY      = piv.y - result.h / 2;
+        ts._borderRect = null;  // expanded bbox is now the actual handle boundary
 
         _drawTransformUI();
       }
@@ -3238,10 +3253,12 @@
         const lx = clientX - caRect.left;
         const ly = clientY - caRect.top;
 
-        const sx = originX + ts.floatX * ps;
-        const sy = originY + ts.floatY * ps;
-        const sw = ts.floatW * ps;
-        const sh = ts.floatH * ps;
+        // Use _borderRect during rotation drag (handles stay at nominal size)
+        const br = ts._borderRect || { x: ts.floatX, y: ts.floatY, w: ts.floatW, h: ts.floatH };
+        const sx = originX + br.x * ps;
+        const sy = originY + br.y * ps;
+        const sw = br.w * ps;
+        const sh = br.h * ps;
 
         const INNER = 6;   // scale zone: ±6px from handle center
         const OUTER = 20;  // rotate zone: 6~20px from handle center (corners only)
@@ -3280,10 +3297,20 @@
         selCtx.clearRect(0, 0, selCanvas.width / dpr, selCanvas.height / dpr);
 
         const { originX, originY, ps } = _getSelCanvasCoords();
+
+        // Pixel display: full floatX/Y/W/H (may be expanded during rotation drag)
         const sx = originX + ts.floatX * ps;
         const sy = originY + ts.floatY * ps;
         const sw = ts.floatW * ps;
         const sh = ts.floatH * ps;
+
+        // Border + handle area: use _borderRect during rotation drag (nominal size),
+        // otherwise same as floatX/Y/W/H
+        const br = ts._borderRect || { x: ts.floatX, y: ts.floatY, w: ts.floatW, h: ts.floatH };
+        const bx = originX + br.x * ps;
+        const by = originY + br.y * ps;
+        const bw = br.w * ps;
+        const bh = br.h * ps;
 
         // Render float content preview (offscreen canvas → drawImage, safe: source is EditorState pixels)
         if (ts.floatW > 0 && ts.floatH > 0) {
@@ -3300,20 +3327,20 @@
         selCtx.lineWidth   = 2;
         selCtx.setLineDash([4, 3]);
         selCtx.beginPath();
-        selCtx.strokeRect(sx - 1, sy - 1, sw + 2, sh + 2);
+        selCtx.strokeRect(bx - 1, by - 1, bw + 2, bh + 2);
         selCtx.setLineDash([]);
 
         // 8 handles: TL, TC, TR, ML, MR, BL, BC, BR (indices 0-7)
         const HALF = 4;  // 8px visual size
         const handlePositions = [
-          [sx,        sy       ],  // 0 TL
-          [sx + sw/2, sy       ],  // 1 TC
-          [sx + sw,   sy       ],  // 2 TR
-          [sx,        sy + sh/2],  // 3 ML
-          [sx + sw,   sy + sh/2],  // 4 MR
-          [sx,        sy + sh  ],  // 5 BL
-          [sx + sw/2, sy + sh  ],  // 6 BC
-          [sx + sw,   sy + sh  ],  // 7 BR
+          [bx,        by       ],  // 0 TL
+          [bx + bw/2, by       ],  // 1 TC
+          [bx + bw,   by       ],  // 2 TR
+          [bx,        by + bh/2],  // 3 ML
+          [bx + bw,   by + bh/2],  // 4 MR
+          [bx,        by + bh  ],  // 5 BL
+          [bx + bw/2, by + bh  ],  // 6 BC
+          [bx + bw,   by + bh  ],  // 7 BR
         ];
         selCtx.fillStyle   = '#7c6af7';  // gray-purple, matches --accent
         selCtx.strokeStyle = '#fff';
@@ -3376,9 +3403,11 @@
         pushHistory();  // one undo step for the entire compound transform
 
         const W = EditorState.width, H = EditorState.height;
+        const newMask = new Uint8Array(W * H);
+        let hasAppliedPixels = false;
         for (let fy = 0; fy < ts.floatH; fy++) {
           for (let fx = 0; fx < ts.floatW; fx++) {
-            const cx = ts.floatX + fx, cy = ts.floatY + fy;
+            const cx = (ts.floatX + fx) | 0, cy = (ts.floatY + fy) | 0;
             if (cx < 0 || cx >= W || cy < 0 || cy >= H) continue;  // clip overflow
             const si = (fy * ts.floatW + fx) * 4;
             if (ts.floatPixels[si + 3] === 0) continue;  // transparent → skip
@@ -3386,16 +3415,32 @@
               ts.floatPixels[si], ts.floatPixels[si+1],
               ts.floatPixels[si+2], ts.floatPixels[si+3],
             ]);
+            newMask[cy * W + cx] = 1;
+            hasAppliedPixels = true;
           }
         }
         flushPixels();
         EditorState.transformState = null;
-        clearSelection();
         _hideTransformTopBar();
         _hideDistanceLabel();
         // B3 fix: disable selCanvas pointer capture now that transform is done
         selCanvas.style.pointerEvents = 'none';
         selCanvas.removeEventListener('pointerdown', _selCanvasPointerDown);
+
+        // After apply: create pixel-accurate selection from the written pixels
+        if (hasAppliedPixels) {
+          EditorState.selectionMask = newMask;
+          EditorState.selection = computeBoundingBox(newMask, W, H);
+          if (antsRafId) { cancelAnimationFrame(antsRafId); antsRafId = null; }
+          if (selCtx) {
+            const dpr = window.devicePixelRatio || 1;
+            selCtx.clearRect(0, 0, selCanvas.width / dpr, selCanvas.height / dpr);
+          }
+          antsRafId = requestAnimationFrame(drawAnts);
+          updateSelectionUI();
+        } else {
+          clearSelection();
+        }
       }
 
       function cancelTransform() {
@@ -3798,15 +3843,15 @@
           e.preventDefault();
           redo();
         }
-        // Cmd+D → Deselect
+        // Cmd+D → Deselect (disabled in move tool — floating selection is not a marquee)
         if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'd') {
           e.preventDefault();
-          clearSelection();
+          if (EditorState.activeTool !== 'move') clearSelection();
         }
-        // Shift+Cmd+I → Inverse selection
+        // Shift+Cmd+I → Inverse selection (disabled in move tool)
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'i') {
           e.preventDefault();
-          invertSelection();
+          if (EditorState.activeTool !== 'move') invertSelection();
         }
         // Delete / Backspace → clear selected pixels (fill with transparent)
         if ((e.key === 'Delete' || e.key === 'Backspace') && !e.altKey && EditorState.selectionMask) {
