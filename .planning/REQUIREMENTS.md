@@ -15,7 +15,7 @@ Requirements for Ver 1.2 release. Each maps to roadmap phases.
 
 - [x] **UI-01**: 编辑器为独立页面（editor.html），4 区布局：左栏 / 中央画布 / 右栏工具箱 / 顶栏参数
 - [x] **UI-02**: 左栏包含色卡限制面板（可折叠）、画布编辑器面板（可折叠）、常驻调色盘（左下角固定）
-- [ ] **UI-03**: 应用色卡后，中央画布右侧显示色卡映射对比图（含精准版/N倍放大版下载）
+- [~] **UI-03**: 应用色卡后，中央画布右侧显示色卡映射对比图（含精准版/N倍放大版下载）— **DEFERRED**: Phase 4.1 主动撤销了 palette-result-panel（非破坏性预览面板与直接写入画布的设计方向不符），该功能推迟至 Ver 1.3+
 
 ### CANVAS — 画布渲染
 
@@ -103,7 +103,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENTRY-01 | Phase 7 | Pending |
 | UI-01 | Phase 1 | Complete |
 | UI-02 | Phase 1 | Complete |
-| UI-03 | Phase 7 | Pending |
+| UI-03 | — | Deferred (Phase 4.1 撤销了 palette-result-panel) |
 | CANVAS-01 | Phase 1 | Complete |
 | CANVAS-02 | Phase 1 | Complete |
 | CANVAS-03 | Phase 7 | Pending |
@@ -138,9 +138,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 - v1 requirements: 33 total
-- Mapped to phases: 33
+- Mapped to phases: 32 (UI-03 deferred, not mapped to any phase)
+- Deferred: 1 (UI-03)
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-02*
-*Last updated: 2026-03-02 — traceability finalized after roadmap creation*
+*Last updated: 2026-03-04 — UI-03 marked deferred (Phase 4.1 撤销了 palette-result-panel；与直接写入画布的设计方向不符)*
