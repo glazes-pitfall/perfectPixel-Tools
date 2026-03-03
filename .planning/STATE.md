@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T13:02:29.238Z"
+last_updated: "2026-03-03T13:05:38.268Z"
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
 ---
 
 # Project State
@@ -111,6 +111,7 @@ Recent decisions affecting current work:
 - [Phase 04-palette-panel]: [04-02]: canvas-area 改为 flex-row，zoom-scroll-content 成为实际滚动容器
 - [Phase 04.1-phase-4]: PAL-03: Alpha normalization done in JS before encoding to avoid cv2.IMREAD_COLOR black-compositing bug
 - [Phase 04.1-phase-4]: PAL-04: applyPalette is now synchronous with save-before pushHistory — palette apply is fully undoable (Cmd+Z)
+- [Phase 04.1-phase-4]: palette-result-panel removal: 7 deletion points executed (deletion 7 pre-done by Plan 01); flex-direction:row retained; applyPalette binding untouched
 
 ### Pending Todos
 
