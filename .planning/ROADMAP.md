@@ -144,6 +144,25 @@ Plans:
 - [ ] 04.1-01-PLAN.md — 修正 alpha 分类：色卡生成过滤 alpha ≤ 127 像素；应用色卡写入 EditorState.pixels + pushHistory
 - [ ] 04.1-02-PLAN.md — 移除 palette-result-panel + 验证检查点
 
+### Phase 4.2: 色卡面板 UI 整理 (INSERTED)
+
+**Goal**: 重新整理色卡限制面板的 UI 结构：移除语义不清的顶部开关；整合"加载色卡"入口使面板布局更直观紧凑
+**Depends on**: Phase 4.1
+**Requirements**: PAL-UI
+**Plans**: 2 plans
+
+**Success Criteria** (what must be TRUE):
+  1. 面板顶部没有 toggle 开关，色卡内容区直接呈现
+  2. 布局从上到下为：当前色卡（含导出▼）→ combobox（命名/选择/保存）→ 生成区 → 固定底部（映射模式 select + 应用色卡）
+  3. swatchesGrid 末尾有「+」色块，点击后将当前前景色追加到色卡
+  4. combobox 的 ▼ 展开已保存列表，点击某条目自动加载该色卡；列表底部有「📁 从本地上传」
+  5. 底部「映射 + 应用色卡」区域固定可见，不随内容滚动消失
+  6. 应用色卡按钮门控仅依赖「有图像 && 色卡非空」，不再依赖已删除的 paletteEnabled 开关
+
+Plans:
+- [ ] 04.2-01-PLAN.md — HTML 骨架替换：新 #paletteBody 结构 + 新 CSS 类（pal-scroll-area / pal-sticky-bottom / add-swatch / combobox-row / export-dropdown）
+- [ ] 04.2-02-PLAN.md — JS 接线：renderSwatches() + refreshSavedDropdown() + applyPalette() 模式读取 + 旧绑定清理 + 人工验证检查点
+
 ### Phase 5: Selection Tools
 **Goal**: User can isolate a region of the canvas using Rectangle Marquee or Magic Wand, and drawing tools respect the selection boundary
 **Depends on**: Phase 3 (runs in parallel with Phase 4)
@@ -197,6 +216,7 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 | 3. Core Tools | 4/4 | Complete | 2026-03-03 |
 | 4. Palette Panel | 3/3 | Complete | 2026-03-03 |
 | 4.1. Phase 4 返工 (INSERTED) | 1/2 | In Progress|  |
+| 4.2. 色卡面板 UI 整理 (INSERTED) | 0/2 | Not started | - |
 | 5. Selection Tools | 3/4 | In Progress | - |
 | 6. Transform | 0/TBD | Not started | - |
 | 7. Integration | 0/TBD | Not started | - |
