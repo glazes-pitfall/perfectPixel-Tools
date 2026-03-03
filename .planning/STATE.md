@@ -143,6 +143,7 @@ None yet.
 | 5 | fix-double-dpr-scaling-in-selection-canv | 2026-03-03 | d764c87 | [5-fix-double-dpr-scaling-in-selection-canv](./quick/5-fix-double-dpr-scaling-in-selection-canv/) |
 | 6 | fix-selection-visual-remove-dashes-corne | 2026-03-03 | eb2675d | [6-fix-selection-visual-remove-dashes-corne](./quick/6-fix-selection-visual-remove-dashes-corne/) |
 | 7 | palette-panel-ui-refinements | 2026-03-03 | c2d521d | [7-palette-panel-ui-refinements](./quick/7-palette-panel-ui-refinements/) |
+| 8 | selection-border-visual-redesign-inverse | 2026-03-04 | 8e5d242 | [8-selection-border-visual-redesign-inverse](./quick/8-selection-border-visual-redesign-inverse/) |
 
 ### Blockers/Concerns
 
@@ -153,6 +154,6 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-04
-Stopped at: Completed 04.2-palette-ui Plan 02 — JS 接线完成 + 用户批准 checkpoint，Phase 04.2 全部完成
+Stopped at: Completed quick-8 selection-border-visual-redesign-inverse — inverse-color drag preview + flashing white bounding-box outline
 Next: Phase 5 (Selection Tools) 或 Phase 6 (Transform)
 Resume file: None
