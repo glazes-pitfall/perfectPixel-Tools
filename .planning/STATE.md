@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: Phase 04.2 (Palette UI) complete; Phase 5 (Selection Tools) complete; Phase 6 (Transform) next
-Plan: Phase 04.2 Plan 02/02 complete (user-approved checkpoint); Phase 05.1 visual polish complete
-Status: Phase 04.2 ALL DONE — 色卡面板 HTML/CSS/JS 全部整理完毕，用户验证通过
-Last activity: 2026-03-04 - Completed 04.2-02: JS 接线完成 (Task 1+2 auto + Task 3 checkpoint approved)
+Phase: Phase 5 (Selection Tools) complete; Phase 5.1 (Visual Polish) complete; Phase 6 (Transform) next
+Plan: All Phase 5 + 5.1 plans complete; selection border rebuilt via Quick tasks 8–11
+Status: Phase 5 + 5.1 ALL DONE — selCanvas 移出 zoom-container，描边固定 2 CSS px，zoom 无关
+Last activity: 2026-03-04 - Marked Phase 5 + 5.1 complete; added Phase 6 selection-border reference to ROADMAP
 
 Progress: [████████████] 56%
 

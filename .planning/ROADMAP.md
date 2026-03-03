@@ -51,7 +51,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: History** - Snapshot-based undo/redo covering all editor operations
 - [x] **Phase 3: Core Tools** - Pencil, Eraser, Paint Bucket tools with integrated color picker
 - [x] **Phase 4: Palette Panel** ⟋ **(parallel with Phase 5)** - Palette swatch integration with bidirectional color picker sync (completed 2026-03-03)
-- [ ] **Phase 5: Selection Tools** ⟋ **(parallel with Phase 4)** - Rectangle Marquee and Magic Wand with animated marching ants
+- [x] **Phase 5: Selection Tools** ⟋ **(parallel with Phase 4)** - Rectangle Marquee and Magic Wand with animated marching ants (completed 2026-03-04)
 - [ ] **Phase 6: Transform** - Move, 8-handle scale, and RotSprite rotation on selections
 - [ ] **Phase 7: Integration** - Canvas Size tool, Open-in-Editor entry point, and download/save wiring
 
@@ -176,16 +176,16 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md — 选区数据模型 + HTML 脚手架 + Rectangle Marquee 工具（网格吸附、拖拽预览、mask 提交）
-- [ ] 05-02-PLAN.md — Magic Wand 工具（BFS 产生像素 mask）+ 完成顶栏 Deselect/Inverse 按钮绑定
-- [ ] 05-03-PLAN.md — 工具裁剪（Pencil/Eraser/Bucket 受选区约束）+ Delete/Option+Delete 快捷键
-- [ ] 05-04-PLAN.md — 浏览器目视验证检查点（Phase 5 成功标准全部确认）
+- [x] 05-02-PLAN.md — Magic Wand 工具（BFS 产生像素 mask）+ 完成顶栏 Deselect/Inverse 按钮绑定
+- [x] 05-03-PLAN.md — 工具裁剪（Pencil/Eraser/Bucket 受选区约束）+ Delete/Option+Delete 快捷键
+- [x] 05-04-PLAN.md — 浏览器目视验证检查点（Phase 5 成功标准全部确认）
 
 ### Phase 05.1: selection visual polish - DPR fix inverse-color preview slow purple-gray ants (INSERTED)
 
 **Goal:** 修复选区渲染的 DPR 双重应用 Bug（导致蚂蚁线 4px 宽粗线 + 紫灰色混色）；切换为 globalCompositeOperation='difference' 单白色反色描边，任何背景均可见
 **Requirements**: VISUAL-FIX-01
 **Depends on:** Phase 5
-**Plans:** 2/2 plans complete
+**Plans:** 1/1 complete (completed 2026-03-04 via Quick tasks 8–11)
 
 **Success Criteria** (what must be TRUE):
   1. 蚂蚁线线宽为 1 逻辑像素（DPR=2 Retina 屏上为 2 物理像素），不再出现 4px 宽粗线
@@ -195,7 +195,7 @@ Plans:
   5. rebuildAntsPath / scheduleAnts / 选区工具交互逻辑均未被改动
 
 Plans:
-- [ ] 05.1-01-PLAN.md — 修复 drawAnts() + _marqueeDrawPreview() 双重 DPR + 反色合成 + 目视验证检查点
+- [x] 05.1-01-PLAN.md — 修复 drawAnts() + _marqueeDrawPreview() 双重 DPR + 反色合成 + 目视验证检查点
 
 ### Phase 6: Transform
 **Goal**: User can move, scale, and rotate the contents of a selection using pixel-art-safe algorithms
@@ -207,6 +207,29 @@ Plans:
   3. Rotating a selection using RotSprite produces pixel-art-quality results (no anti-aliasing artifacts); the rotation angle is editable in the top bar
   4. Pressing Enter applies a pending transform; pressing ESC cancels it and restores the original pixels; Apply and Cancel buttons are visible in the top bar during any active transform
 **Plans**: TBD
+
+**Selection border implementation reference (from Phase 5.1 + Quick tasks 8–11):**
+
+> Phase 6 的变换手柄边框、移动预览边框，必须用同一套坐标系实现。
+
+架构要点：
+- **`#selection-canvas` 在 `#canvas-area` 内，是 `#zoom-scroll-content` 的平级元素**，不在 `#zoom-container` 内。这是关键——selCanvas 不受 `transform: scale(zoom)` 影响。
+- selCanvas 覆盖整个 canvas-area 视口（`clientWidth × clientHeight`），`position: absolute; top: 0; left: 0; pointer-events: none`。
+- `selCtx` 仅 `scale(dpr, dpr)`，1 逻辑单位 = 1 CSS 像素。
+- **坐标转换**（画布像素 → screen CSS 坐标）：
+  ```javascript
+  const caRect  = document.getElementById('canvas-area').getBoundingClientRect();
+  const pixRect = pixelCanvas.getBoundingClientRect();
+  const originX = pixRect.left - caRect.left;   // selCanvas CSS px
+  const originY = pixRect.top  - caRect.top;
+  const ps      = pixRect.width / EditorState.width;  // CSS px per canvas pixel
+  // 画布坐标 (cx, cy) → selCanvas CSS 坐标: originX + cx*ps, originY + cy*ps
+  ```
+- **lineWidth = 2**（固定 2 CSS 像素，不除以 dpr 或 zoom，任何缩放等级均不变）。
+- **外描边偏移 off = 1**（lineWidth/2），使 2px 描边完全落在选区外侧。
+- 清除整个 selCanvas：`selCtx.clearRect(0, 0, selCanvas.width/dpr, selCanvas.height/dpr)`。
+
+Phase 6 的变换手柄（8 个角/边控制点）也应在 selCanvas 上绘制，坐标同样通过上述公式计算，手柄尺寸固定为屏幕像素（如 8×8px CSS 方块），与 zoom 无关。
 
 ### Phase 7: Integration
 **Goal**: The editor is reachable from the Ver 1.1 pipeline, canvas dimensions can be adjusted, and all outputs can be downloaded
@@ -234,7 +257,7 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 | 4. Palette Panel | 3/3 | Complete | 2026-03-03 |
 | 4.1. Phase 4 返工 (INSERTED) | 1/2 | In Progress|  |
 | 4.2. 色卡面板 UI 整理 (INSERTED) | 1/2 | Complete    | 2026-03-03 |
-| 5. Selection Tools | 3/4 | In Progress | - |
-| 5.1. Selection Visual Polish (INSERTED) | 0/1 | Not started | - |
+| 5. Selection Tools | 4/4 | Complete | 2026-03-04 |
+| 5.1. Selection Visual Polish (INSERTED) | 1/1 | Complete | 2026-03-04 |
 | 6. Transform | 0/TBD | Not started | - |
 | 7. Integration | 0/TBD | Not started | - |
