@@ -640,11 +640,9 @@
     <div id="tool-settings-move" style="display:none; align-items:center; gap:8px;">
       <span style="font-size:12px; color:var(--text-muted);">X%</span>
       <input id="opt-scale-x" type="number" min="1" max="1600" value="100" style="width:56px; padding:3px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
+      <button id="btn-scale-link" title="Link X/Y scale" style="padding:2px 7px; font-size:14px; border-radius:5px; border:1px solid var(--border); background:transparent; color:var(--text-muted); cursor:pointer; line-height:1; transition:background .1s,border-color .1s,color .1s;">🔗</button>
       <span style="font-size:12px; color:var(--text-muted);">Y%</span>
       <input id="opt-scale-y" type="number" min="1" max="1600" value="100" style="width:56px; padding:3px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
-      <label style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:4px; cursor:pointer;">
-        <input id="opt-scale-lock" type="checkbox" checked>Lock
-      </label>
       <span style="font-size:12px; color:var(--text-muted);">Angle°</span>
       <input id="opt-rotate-angle" type="number" min="-180" max="180" value="0" style="width:56px; padding:3px 6px; border-radius:5px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-size:12px;">
       <button class="btn btn-primary" id="btn-apply-transform" style="padding:4px 10px; font-size:12px;">Apply ✓</button>
@@ -3447,7 +3445,8 @@
         selCanvas.style.pointerEvents = 'none';
         selCanvas.removeEventListener('pointerdown', _selCanvasPointerDown);
 
-        // After apply: create pixel-accurate selection from the written pixels
+        // After apply: create pixel-accurate selection from the written pixels,
+        // then deactivate all tools (no tool highlighted, selection stays visible).
         if (hasAppliedPixels) {
           EditorState.selectionMask = newMask;
           EditorState.selection = computeBoundingBox(newMask, W, H);
@@ -3457,10 +3456,11 @@
             selCtx.clearRect(0, 0, selCanvas.width / dpr, selCanvas.height / dpr);
           }
           antsRafId = requestAnimationFrame(drawAnts);
-          updateSelectionUI();
         } else {
           clearSelection();
         }
+        // Deactivate all tools — activeTool was 'move', transformState already null
+        setActiveTool(null);
       }
 
       function cancelTransform() {
@@ -3586,7 +3586,7 @@
             // Original bbox dimensions
             const origW = ts.origBbox.w;
             const origH = ts.origBbox.h;
-            const lockAspect = document.getElementById('opt-scale-lock')?.checked ?? true;
+            const lockAspect = _scaleLinkActive;
 
             // Compute new scale based on which handle is dragged
             // Corners: both axes; TC/BC: Y only; ML/MR: X only
@@ -3735,11 +3735,21 @@
 
       const scaleXInput  = document.getElementById('opt-scale-x');
       const scaleYInput  = document.getElementById('opt-scale-y');
-      const scaleLockChk = document.getElementById('opt-scale-lock');
+      const scaleLinkBtn = document.getElementById('btn-scale-link');
+      let _scaleLinkActive = false;
+
+      if (scaleLinkBtn) {
+        scaleLinkBtn.addEventListener('click', () => {
+          _scaleLinkActive = !_scaleLinkActive;
+          scaleLinkBtn.style.background    = _scaleLinkActive ? 'var(--accent)' : 'transparent';
+          scaleLinkBtn.style.borderColor   = _scaleLinkActive ? 'var(--accent)' : 'var(--border)';
+          scaleLinkBtn.style.color         = _scaleLinkActive ? '#fff' : 'var(--text-muted)';
+        });
+      }
 
       if (scaleXInput) {
         scaleXInput.addEventListener('input', () => {
-          if (scaleLockChk?.checked) {
+          if (_scaleLinkActive) {
             if (scaleYInput) scaleYInput.value = scaleXInput.value;
           }
           clearTimeout(_scaleInputTimer);
@@ -3748,7 +3758,7 @@
       }
       if (scaleYInput) {
         scaleYInput.addEventListener('input', () => {
-          if (scaleLockChk?.checked) {
+          if (_scaleLinkActive) {
             if (scaleXInput) scaleXInput.value = scaleYInput.value;
           }
           clearTimeout(_scaleInputTimer);
