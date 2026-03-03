@@ -266,5 +266,5 @@ Phase 4 (Palette Panel) and Phase 5 (Selection Tools) run in parallel after Phas
 | 4.2. 色卡面板 UI 整理 (INSERTED) | 1/2 | Complete    | 2026-03-03 |
 | 5. Selection Tools | 4/4 | Complete | 2026-03-04 |
 | 5.1. Selection Visual Polish (INSERTED) | 1/1 | Complete | 2026-03-04 |
-| 6. Transform | 4/5 | In Progress|  |
+| 6. Transform | 5/5 | Complete   | 2026-03-03 |
 | 7. Integration | 0/TBD | Not started | - |

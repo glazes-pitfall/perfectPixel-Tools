@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-03T21:19:37.061Z"
+last_updated: "2026-03-03T21:24:55.266Z"
 progress:
   total_phases: 9
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 26
-  completed_plans: 23
+  completed_plans: 24
 ---
 
 # Project State
@@ -22,10 +22,10 @@ See: .planning/PROJECT.md (updated 2026-03-02)
 
 ## Current Position
 
-Phase: Phase 6 (Transform) — Plan 04 complete; Plan 05 (corner rotate zones) next
-Plan: 06-04 DONE — Transform bug fixes (B1 scale anchor, B2 zoom sync, B3 boundary drag); 06-05 next
-Status: Phase 6 in progress — Move + scale + RotSprite + bug fixes complete; corner rotate zones remaining
-Last activity: 2026-03-04 - Completed 06-04 transform bug fixes (commits 905b2f4, 2791f73, 5ea8462)
+Phase: Phase 6 (Transform) — Plan 05 Tasks 1+2 complete; Task 3 checkpoint:human-verify pending
+Plan: 06-05 IN PROGRESS — hitTestHandle dual-mode + rotation drag committed (5400900); awaiting human verification
+Status: Phase 6 near-complete — corner handle scale/rotate dual-mode implemented; human verification required
+Last activity: 2026-03-04 - Completed 06-05 Tasks 1+2 (hitTestHandle dual-zone, rotation drag, cursor switching) commit 5400900
 
 Progress: [████████████] 56%
 
@@ -67,6 +67,7 @@ Progress: [████████████] 56%
 | Phase 06-transform P02 | 3 | 2 tasks | 1 files |
 | Phase 06-transform P03 | 10 | 1 tasks | 1 files |
 | Phase 06-transform P04 | 3 | 3 tasks | 1 files |
+| Phase 06-transform P05 | 2 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,9 @@ Recent decisions affecting current work:
 - [Phase 06-transform]: Lock checkbox uses one-way value sync to prevent debounce recursion in scale inputs
 - [Phase 06-transform]: RotSprite compound order: scale first then rotate; colorEq uses buffer indices; 128x128 limit on origBbox; _showStatus toast overlay created dynamically
 - [Phase 06-transform]: [06-04]: anchorFrac table bridges onDown/onMove for scale anchor; _onZoomChanged hook bridges outer applyZoom with inner _drawTransformUI; selCanvas pointer-events toggle enables canvas-boundary drag continuation
+- [Phase 06-05]: [06-05]: hitTestHandle dual-zone INNER=6/OUTER=20 — corner outer ring triggers RotSprite rotation drag with crosshair cursor
+- [Phase 06-05]: [06-05]: onCursor(x,y,e) signature extended with PointerEvent — needed for client-coord hit testing in cursor logic
+- [Phase 06-05]: [06-05]: Relative-angle rotation drag: refAngle at pointerdown, deltaDeg accumulated on pointermove, Angle° input synced in real-time
 
 ### Pending Todos
 
