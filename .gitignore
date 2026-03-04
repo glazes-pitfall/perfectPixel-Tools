@@ -1,23 +1,41 @@
+# ── macOS ─────────────────────────────────────────────
+.DS_Store
 
+# ── Python ────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
 build/
 dist/
-*.egg-info/
-
 venv/
 .venv/
 env/
 
-output/
-
-*.log
-
-.DS_Store
-
-__pycache__/
-*.pyc
-
+# ── 测试 / 临时产物 ──────────────────────────────────
+# Playwright MCP 测试截图和日志
 .playwright-mcp/
 
-# Test/temp images
+# 运行时产生的输出图片
+output/
 output.png
 output_8x.png
+
+# 手动测试截图 / 参考图 / 调试图（根目录散落的 png/jpg）
+current_*.png
+editor_*.png
+ref_*.png
+test_*.png
+
+# ── 不需要上传的本地文件 ─────────────────────────────
+# 原作者示例（已从仓库移除，本地保留供参考）
+example.py
+images/
+
+# icons 中未使用的备选文件
+icons/NotForUse.zip
+icons/others/
+icons/icon64px_*.png
+
+# ── 日志 ──────────────────────────────────────────────
+*.log
