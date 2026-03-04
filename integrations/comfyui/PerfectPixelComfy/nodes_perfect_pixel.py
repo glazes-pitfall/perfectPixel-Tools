@@ -57,7 +57,7 @@ def _load_backend(backend: str):
         import cv2  # noqa: F401
         from perfect_pixel import get_perfect_pixel
         return get_perfect_pixel
-    except Exception:
+    except ImportError:
         from perfect_pixel_noCV2 import get_perfect_pixel
         return get_perfect_pixel
 
