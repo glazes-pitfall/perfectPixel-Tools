@@ -354,6 +354,11 @@ def editor():
 
 
 
+@app.route("/icons/<path:filename>")
+def icons(filename):
+    return send_file(os.path.join(os.path.dirname(__file__), "icons", filename))
+
+
 @app.route("/output.png")
 def output_png():
     return send_file(os.path.join(os.path.dirname(__file__), "output.png"))

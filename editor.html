@@ -213,6 +213,45 @@
     }
     .tool-btn-active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+    /* ── Right-panel instant tooltip ─────────────────────────────────────────── */
+    #tool-tip {
+      position: fixed;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 11px;
+      pointer-events: none;
+      z-index: 9000;
+      display: none;
+      box-shadow: 0 4px 14px rgba(0,0,0,.45);
+      max-width: 220px;
+    }
+    .tool-tip-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .tool-tip-en { color: var(--text-muted); font-weight: 400; }
+    .tool-tip-key {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+    .tool-tip-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+
     /* ── Top-bar tool settings inputs ────────────────────────────────────────── */
     #top-bar input[type=number], #top-bar select {
       padding: 3px 6px; border-radius: 5px;
@@ -648,23 +687,7 @@
       <button class="btn btn-primary" id="btn-apply-transform" style="padding:4px 10px; font-size:12px;">Apply ✓</button>
       <button class="btn btn-ghost"   id="btn-cancel-transform" style="padding:4px 10px; font-size:12px;">Cancel ✕</button>
     </div>
-    <div id="tool-settings-canvas-size" style="display:none; align-items:center; gap:6px; flex-wrap:wrap;">
-      <label style="font-size:12px;color:var(--text-muted);">W</label>
-      <input id="cfg-width"  type="number" min="1" value="64" style="width:52px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
-      <label style="font-size:12px;color:var(--text-muted);">H</label>
-      <input id="cfg-height" type="number" min="1" value="64" style="width:52px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
-      <span style="color:var(--border);padding:0 4px;">|</span>
-      <label style="font-size:12px;color:var(--text-muted);">L</label>
-      <input id="cfg-left"   type="number" value="0" style="width:44px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
-      <label style="font-size:12px;color:var(--text-muted);">R</label>
-      <input id="cfg-right"  type="number" value="0" style="width:44px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
-      <label style="font-size:12px;color:var(--text-muted);">T</label>
-      <input id="cfg-top"    type="number" value="0" style="width:44px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
-      <label style="font-size:12px;color:var(--text-muted);">B</label>
-      <input id="cfg-bottom" type="number" value="0" style="width:44px;padding:2px 4px;background:var(--surface2);border:1px solid var(--border);border-radius:3px;color:var(--text);font-size:12px;">
-      <button class="btn btn-primary" id="btn-cfg-apply"  style="padding:4px 10px;font-size:12px;margin-left:4px;">Apply ✓</button>
-      <button class="btn btn-ghost"   id="btn-cfg-cancel" style="padding:4px 10px;font-size:12px;">Cancel ✕</button>
-    </div>
+    <div id="tool-settings-canvas-size" style="display:none;"></div>
     <button class="btn btn-ghost" id="btn-deselect" style="display:none" title="Deselect (Cmd+D)">Deselect</button>
     <button class="btn btn-ghost" id="btn-inverse"  style="display:none" title="Inverse (Shift+Cmd+I)">Inverse</button>
     <span style="flex:1"></span>
@@ -781,6 +804,61 @@
           </div><!-- /palette-body -->
         </div><!-- /palette-section -->
 
+        <!-- ── 画布大小 (Canvas Size) Panel ── -->
+        <div class="palette-section" id="canvasSizeSection">
+          <div class="palette-header" id="canvasSizeHeader">
+            <span class="title">修改画布</span>
+            <span class="chevron" id="canvasSizeChevron">▼</span>
+          </div>
+          <div class="palette-body hidden" id="canvasSizeBody">
+            <div style="padding:10px; display:flex; flex-direction:column; gap:10px;">
+
+              <!-- 画布大小 sub-section -->
+              <div>
+                <div style="font-size:10px; font-weight:700; color:var(--text-muted); letter-spacing:0.4px; margin-bottom:6px;">画布大小</div>
+                <div style="display:flex; align-items:center; gap:4px;">
+                  <label style="font-size:11px; color:var(--text-muted); min-width:46px; flex-shrink:0;">Width</label>
+                  <input id="cfg-width" type="number" min="1" value="64"
+                    style="flex:1; min-width:0; padding:3px 5px; background:var(--surface2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:12px; cursor:ew-resize;">
+                  <label style="font-size:11px; color:var(--text-muted); min-width:46px; flex-shrink:0; margin-left:4px;">Height</label>
+                  <input id="cfg-height" type="number" min="1" value="64"
+                    style="flex:1; min-width:0; padding:3px 5px; background:var(--surface2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:12px; cursor:ew-resize;">
+                </div>
+              </div>
+
+              <!-- 边界调整 sub-section -->
+              <div>
+                <div style="font-size:10px; font-weight:700; color:var(--text-muted); letter-spacing:0.4px; margin-bottom:6px;">边界调整</div>
+                <div style="display:flex; flex-direction:column; gap:5px;">
+                  <div style="display:flex; align-items:center; gap:4px;">
+                    <label style="font-size:11px; color:var(--text-muted); min-width:46px; flex-shrink:0;">Left</label>
+                    <input id="cfg-left" type="number" value="0"
+                      style="flex:1; min-width:0; padding:3px 5px; background:var(--surface2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:12px; cursor:ew-resize;">
+                    <label style="font-size:11px; color:var(--text-muted); min-width:46px; flex-shrink:0; margin-left:4px;">Right</label>
+                    <input id="cfg-right" type="number" value="0"
+                      style="flex:1; min-width:0; padding:3px 5px; background:var(--surface2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:12px; cursor:ew-resize;">
+                  </div>
+                  <div style="display:flex; align-items:center; gap:4px;">
+                    <label style="font-size:11px; color:var(--text-muted); min-width:46px; flex-shrink:0;">Top</label>
+                    <input id="cfg-top" type="number" value="0"
+                      style="flex:1; min-width:0; padding:3px 5px; background:var(--surface2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:12px; cursor:ew-resize;">
+                    <label style="font-size:11px; color:var(--text-muted); min-width:46px; flex-shrink:0; margin-left:4px;">Bottom</label>
+                    <input id="cfg-bottom" type="number" value="0"
+                      style="flex:1; min-width:0; padding:3px 5px; background:var(--surface2); border:1px solid var(--border); border-radius:4px; color:var(--text); font-size:12px; cursor:ew-resize;">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Apply / Restore -->
+              <div style="display:flex; gap:6px;">
+                <button class="btn btn-primary" id="btn-cfg-apply" style="flex:1; padding:6px 10px; font-size:12px;">应用 ✓</button>
+                <button class="btn btn-ghost" id="btn-cfg-restore" style="padding:6px 10px; font-size:12px;">还原</button>
+              </div>
+
+            </div>
+          </div>
+        </div><!-- /canvasSizeSection -->
+
       </div>
 
       <!-- Color Picker Panel (permanent, between scroll area and pixel inspector) -->
@@ -829,10 +907,12 @@
         </div>
       </div>
 
-      <!-- Download trigger button -->
+      <!-- Download trigger button + Home button -->
       <div style="padding:8px 12px; border-top:1px solid var(--border); display:flex; gap:8px; align-items:center;">
-        <button id="btn-download-open" class="btn btn-secondary"
-                style="flex:1; padding:6px 10px; font-size:13px;">⬇ 下载</button>
+        <button id="btn-download-open" class="btn btn-primary"
+                style="flex:2; padding:6px 10px; font-size:13px;">⬇ 下载</button>
+        <button id="btn-go-home" class="btn btn-secondary"
+                style="flex:1; padding:6px 6px; font-size:13px;">🏠 主页</button>
       </div>
     </div>
 
@@ -849,17 +929,58 @@
       </div>
     </div>
 
-    <!-- Right Panel (tool strip — disabled in Phase 1) -->
+    <!-- Right Panel (tool strip) -->
     <div id="right-panel">
-      <button class="tool-btn" data-tool="marquee" title="Marquee (M)"><img src="/icons/Marquee_icon.png" width="28" height="28" alt="Marquee"></button>
-      <button class="tool-btn" data-tool="wand" title="Wand (W)"><img src="/icons/Wand_icon.png" width="28" height="28" alt="Wand"></button>
-      <button class="tool-btn" data-tool="move" title="Move (V)"><img src="/icons/Move_icon.png" width="28" height="28" alt="Move"></button>
-      <button class="tool-btn" data-tool="pencil" title="Pencil (B)"><img src="/icons/Pencil_icon.png" width="28" height="28" alt="Pencil"></button>
-      <button class="tool-btn" data-tool="bucket" title="Bucket (G)"><img src="/icons/Bucket_icon.png" width="28" height="28" alt="Bucket"></button>
-      <button class="tool-btn" data-tool="eraser" title="Eraser (E)"><img src="/icons/Eraser_icon.png" width="28" height="28" alt="Eraser"></button>
-      <button class="tool-btn" data-tool="eyedropper" title="Eyedropper (I)"><img src="/icons/Eyedropper_icon.png" width="28" height="28" alt="Eyedropper"></button>
+      <button class="tool-btn" data-tool="marquee"
+              data-tip-zh="选框" data-tip-en="Marquee" data-tip-key="M"
+              data-tip-desc="框选矩形区域；绘制时限定在选区内">
+        <img src="/icons/Marquee_icon.png" width="28" height="28" alt="选框 Marquee">
+      </button>
+      <button class="tool-btn" data-tool="wand"
+              data-tip-zh="魔棒" data-tip-en="Wand" data-tip-key="W"
+              data-tip-desc="按颜色自动选取相似像素区域">
+        <img src="/icons/Wand_icon.png" width="28" height="28" alt="魔棒 Wand">
+      </button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" data-tool="move"
+              data-tip-zh="移动" data-tip-en="Move" data-tip-key="V"
+              data-tip-desc="拖移、缩放或旋转选区内容（需先有选区）">
+        <img src="/icons/Move_icon.png" width="28" height="28" alt="移动 Move">
+      </button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" data-tool="pencil"
+              data-tip-zh="铅笔" data-tip-en="Pencil" data-tip-key="B"
+              data-tip-desc="逐像素绘制，支持笔刷大小与形状">
+        <img src="/icons/Pencil_icon.png" width="28" height="28" alt="铅笔 Pencil">
+      </button>
+      <button class="tool-btn" data-tool="bucket"
+              data-tip-zh="油漆桶" data-tip-en="Bucket" data-tip-key="G"
+              data-tip-desc="填充连续或全局同色区域">
+        <img src="/icons/Bucket_icon.png" width="28" height="28" alt="油漆桶 Bucket">
+      </button>
+      <button class="tool-btn" data-tool="eraser"
+              data-tip-zh="橡皮擦" data-tip-en="Eraser" data-tip-key="E"
+              data-tip-desc="擦除像素使其变为透明">
+        <img src="/icons/Eraser_icon.png" width="28" height="28" alt="橡皮擦 Eraser">
+      </button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" data-tool="eyedropper"
+              data-tip-zh="吸管" data-tip-en="Eyedropper" data-tip-key="I"
+              data-tip-desc="从画布或屏幕任意位置取色">
+        <img src="/icons/Eyedropper_icon.png" width="28" height="28" alt="吸管 Eyedropper">
+      </button>
       <div style="flex:1;"></div><!-- spacer pushes help button to bottom -->
-      <button class="tool-btn" id="help-btn" title="快捷键帮助 (?)"><img src="/icons/Help_icon.png" width="28" height="28" alt="Help"></button>
+      <button class="tool-btn" id="help-btn"
+              data-tip-zh="帮助" data-tip-en="Help" data-tip-key="?"
+              data-tip-desc="查看所有快捷键">
+        <img src="/icons/Help_icon.png" width="28" height="28" alt="帮助 Help">
+      </button>
+    </div>
+
+    <!-- Instant tooltip for right-panel tool buttons -->
+    <div id="tool-tip">
+      <div class="tool-tip-name" id="tool-tip-name"></div>
+      <div class="tool-tip-desc" id="tool-tip-desc"></div>
     </div>
 
   </div><!-- /#layout -->
@@ -1172,8 +1293,7 @@
       updateSelectionUI();
       // Show/hide tool settings panels
       const panelIds = ['tool-settings-pencil', 'tool-settings-eraser', 'tool-settings-bucket',
-                        'tool-settings-marquee', 'tool-settings-wand', 'tool-settings-move',
-                        'tool-settings-canvas-size'];
+                        'tool-settings-marquee', 'tool-settings-wand', 'tool-settings-move'];
       panelIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
@@ -1182,14 +1302,12 @@
       if (activePanel) activePanel.style.display = 'flex';
       // canvas-size: initialize inputs and draw guides
       if (name === 'canvas-size') {
-        const wEl = document.getElementById('cfg-width');
-        const hEl = document.getElementById('cfg-height');
-        if (wEl && EditorState.width)  wEl.value = EditorState.width;
-        if (hEl && EditorState.height) hEl.value = EditorState.height;
-        ['cfg-left','cfg-right','cfg-top','cfg-bottom'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.value = 0;
-        });
+        const W = EditorState.width  || 0;
+        const H = EditorState.height || 0;
+        const set = id => v => { const el = document.getElementById(id); if (el) el.value = v; };
+        set('cfg-left')(0);   set('cfg-right')(W);
+        set('cfg-top')(0);    set('cfg-bottom')(H);
+        set('cfg-width')(W);  set('cfg-height')(H);
         clearSelection();  // 清除已有选区，selection-canvas 腾出给参考线
         setTimeout(() => { if (typeof drawCanvasSizeGuides === 'function') drawCanvasSizeGuides(); }, 0);
       }
@@ -1436,12 +1554,17 @@
      * Save a snapshot of EditorState.pixels to the history stack.
      * Must be called in pointerdown only — never in pointermove.
      * One user action = one history entry.
+     * Each entry stores {pixels, width, height} so canvas-resize ops are fully undoable.
      */
     function pushHistory() {
       // Truncate any redo branch
       EditorState.history.splice(EditorState.historyIndex + 1);
-      // Push current pixels snapshot
-      EditorState.history.push(EditorState.pixels.slice());
+      // Push snapshot including canvas dimensions (canvas-size changes must be undoable)
+      EditorState.history.push({
+        pixels: EditorState.pixels.slice(),
+        width:  EditorState.width,
+        height: EditorState.height,
+      });
       // Overflow: keep stack at MAX_HISTORY
       if (EditorState.history.length > EditorState.MAX_HISTORY) {
         EditorState.history.shift();
@@ -1452,19 +1575,28 @@
       updateHistoryButtons();
     }
 
+    function _restoreHistoryEntry(entry) {
+      const { pixels, width, height } = entry;
+      // If canvas size changed, rebuild canvas elements before writing pixels
+      if (width !== EditorState.width || height !== EditorState.height) {
+        initCanvases(width, height);
+        clearSelection();
+      }
+      EditorState.pixels = pixels.slice();
+      flushPixels();
+    }
+
     function undo() {
       if (EditorState.historyIndex <= 0) return;
       EditorState.historyIndex--;
-      EditorState.pixels = EditorState.history[EditorState.historyIndex].slice();
-      flushPixels();
+      _restoreHistoryEntry(EditorState.history[EditorState.historyIndex]);
       updateHistoryButtons();
     }
 
     function redo() {
       if (EditorState.historyIndex >= EditorState.history.length - 1) return;
       EditorState.historyIndex++;
-      EditorState.pixels = EditorState.history[EditorState.historyIndex].slice();
-      flushPixels();
+      _restoreHistoryEntry(EditorState.history[EditorState.historyIndex]);
       updateHistoryButtons();
     }
 
@@ -1952,33 +2084,6 @@
         });
         document.getElementById('insp-swatch').style.background = 'transparent';
       });
-    }
-
-    /**
-     * Fetch /output.png, decode to ImageData, store in EditorState.pixels,
-     * call initCanvases(), then flushPixels().
-     * This is the only place getImageData is called — all subsequent reads
-     * go through EditorState.pixels (avoids premultiplied alpha corruption).
-     */
-    async function loadPlaceholderImage() {
-      try {
-        const resp   = await fetch('/output.png');
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const blob   = await resp.blob();
-        const bitmap = await createImageBitmap(blob);
-        const { width, height } = bitmap;
-        // initCanvases must run first so pixelCtx exists before drawImage
-        initCanvases(width, height);
-        pixelCtx.drawImage(bitmap, 0, 0);
-        // One-time getImageData — afterwards all reads go through EditorState.pixels
-        const imageData = pixelCtx.getImageData(0, 0, width, height);
-        EditorState.pixels = imageData.data.slice(); // Uint8ClampedArray copy
-        clearSelection(); // Per CONTEXT.md: loading new image clears selection
-        flushPixels(); // re-render from EditorState.pixels (establishes canonical path)
-        bitmap.close();
-      } catch (err) {
-        console.warn('loadPlaceholderImage failed:', err);
-      }
     }
 
     // ── Palette Panel: showStatus helper (editor version) ────────────────────
@@ -4042,20 +4147,19 @@
       };
 
       // ── Canvas Size Tool ──────────────────────────────────────────────────────
+      // L/R/T/B = absolute positions of reference lines in current canvas pixel coordinates.
+      // Default: L=0, R=width, T=0, B=height. W=R-L, H=B-T.
       function _getCanvasSizeParams() {
-        const W  = parseInt(document.getElementById('cfg-width').value)  || EditorState.width;
-        const H  = parseInt(document.getElementById('cfg-height').value) || EditorState.height;
         const L  = parseInt(document.getElementById('cfg-left').value)   || 0;
-        const R  = parseInt(document.getElementById('cfg-right').value)  || 0;
+        const R  = parseInt(document.getElementById('cfg-right').value)  || EditorState.width;
         const T  = parseInt(document.getElementById('cfg-top').value)    || 0;
-        const B  = parseInt(document.getElementById('cfg-bottom').value) || 0;
-        // W/H are the final target canvas dimensions (direct values, independent of L/R/T/B)
-        // L/R/T/B only control offset of existing content in the new canvas
-        const newW = Math.max(1, W);
-        const newH = Math.max(1, H);
-        const offsetL = L;  // shift old content right by L pixels (negative = left)
-        const offsetT = T;  // shift old content down by T pixels (negative = up)
-        return { newW, newH, offsetL, offsetT };
+        const B  = parseInt(document.getElementById('cfg-bottom').value) || EditorState.height;
+        const newW = Math.max(1, R - L);
+        const newH = Math.max(1, B - T);
+        // offsetL/T: in new canvas, old pixel at (x,y) lands at (x-L, y-T)
+        const offsetL = -L;
+        const offsetT = -T;
+        return { newW, newH, offsetL, offsetT, L, R, T, B };
       }
 
       function drawCanvasSizeGuides() {
@@ -4065,7 +4169,7 @@
 
         if (!EditorState.pixels) return;
 
-        const { newW, newH, offsetL, offsetT } = _getCanvasSizeParams();
+        const { L, R, T, B } = _getCanvasSizeParams();
 
         // Coordinate transform: canvas pixels → selCanvas CSS coords
         const pixRect = pixelCanvas.getBoundingClientRect();
@@ -4074,26 +4178,24 @@
         const originY = pixRect.top  - caRect.top;
         const ps      = pixRect.width / EditorState.width;  // CSS px per canvas pixel
 
-        // New canvas edges in selCanvas CSS coords (offsetL/T = old content offset, new canvas TL at -offsetL/-offsetT)
-        const left   = originX - offsetL * ps;
-        const top    = originY - offsetT * ps;
-        const right  = left + newW * ps;
-        const bottom = top  + newH * ps;
+        // Reference line positions in selCanvas CSS coords
+        const left   = originX + L * ps;
+        const right  = originX + R * ps;
+        const top    = originY + T * ps;
+        const bottom = originY + B * ps;
 
+        const oldRight  = originX + EditorState.width  * ps;
+        const oldBottom = originY + EditorState.height * ps;
         const caW = selCanvas.width / dpr;
         const caH = selCanvas.height / dpr;
 
-        // Expansion area blue overlay (semi-transparent)
+        // Expansion area blue overlay
         selCtx.save();
         selCtx.fillStyle = 'rgba(100,140,220,0.15)';
-        if (top < originY)
-          selCtx.fillRect(left, top, newW * ps, originY - top);
-        if (bottom > originY + EditorState.height * ps)
-          selCtx.fillRect(left, originY + EditorState.height * ps, newW * ps, bottom - (originY + EditorState.height * ps));
-        if (left < originX)
-          selCtx.fillRect(left, top, originX - left, newH * ps);
-        if (right > originX + EditorState.width * ps)
-          selCtx.fillRect(originX + EditorState.width * ps, top, right - (originX + EditorState.width * ps), newH * ps);
+        if (L < 0) selCtx.fillRect(left, top, originX - left, bottom - top);
+        if (R > EditorState.width)  selCtx.fillRect(oldRight, top, right - oldRight, bottom - top);
+        if (T < 0) selCtx.fillRect(left, top, right - left, originY - top);
+        if (B > EditorState.height) selCtx.fillRect(left, oldBottom, right - left, bottom - oldBottom);
         selCtx.restore();
 
         // Purple solid reference lines (spanning full canvas-area)
@@ -4101,9 +4203,9 @@
         selCtx.strokeStyle = '#7c6af7';
         selCtx.lineWidth = 1;
         selCtx.setLineDash([]);
-        selCtx.beginPath(); selCtx.moveTo(left, 0); selCtx.lineTo(left, caH); selCtx.stroke();
-        selCtx.beginPath(); selCtx.moveTo(right, 0); selCtx.lineTo(right, caH); selCtx.stroke();
-        selCtx.beginPath(); selCtx.moveTo(0, top); selCtx.lineTo(caW, top); selCtx.stroke();
+        selCtx.beginPath(); selCtx.moveTo(left,  0); selCtx.lineTo(left,  caH); selCtx.stroke();
+        selCtx.beginPath(); selCtx.moveTo(right,  0); selCtx.lineTo(right,  caH); selCtx.stroke();
+        selCtx.beginPath(); selCtx.moveTo(0, top);   selCtx.lineTo(caW, top);   selCtx.stroke();
         selCtx.beginPath(); selCtx.moveTo(0, bottom); selCtx.lineTo(caW, bottom); selCtx.stroke();
         selCtx.restore();
       }
@@ -4114,8 +4216,6 @@
         const oldPixels = EditorState.pixels;
         const oldW = EditorState.width;
         const oldH = EditorState.height;
-
-        pushHistory();  // save-before (Apply is an immediate operation)
 
         const newPixels = new Uint8ClampedArray(newW * newH * 4);  // fully transparent
 
@@ -4136,31 +4236,152 @@
 
         EditorState.pixels = newPixels;
         clearSelection();          // clear old selection mask (coordinate system invalid)
-        initCanvases(newW, newH);  // rebuild 3-layer canvas + scroll space
+        initCanvases(newW, newH);  // rebuild 3-layer canvas + scroll space (sets EditorState.width/height)
         flushPixels();
+        pushHistory();  // save-after: captures post-resize state so undo returns to pre-resize
         setActiveTool('pencil');   // exit canvas-size mode
+        _closeCanvasSizePanel();
+      }
+
+      // Close canvas-size sidebar panel without re-triggering cancelCanvasSize
+      function _closeCanvasSizePanel() {
+        const body = document.getElementById('canvasSizeBody');
+        const header = document.getElementById('canvasSizeHeader');
+        if (body) body.classList.add('hidden');
+        if (header) header.classList.remove('open');
       }
 
       function cancelCanvasSize() {
         const dpr = window.devicePixelRatio || 1;
         selCtx.clearRect(0, 0, selCanvas.width / dpr, selCanvas.height / dpr);
         setActiveTool('pencil');
+        _closeCanvasSizePanel();
       }
 
-      // Canvas Size input events → real-time guide update
+      // Baseline dimensions when canvas-size panel was last opened (for Restore)
+      let _cfgBaseW = 0, _cfgBaseH = 0;
+
+      // Toggle canvas-size sidebar panel open/closed
+      function toggleCanvasSizePanel(forceOpen) {
+        const body = document.getElementById('canvasSizeBody');
+        const header = document.getElementById('canvasSizeHeader');
+        const isOpen = !body.classList.contains('hidden');
+        const shouldOpen = forceOpen !== undefined ? forceOpen : !isOpen;
+        if (shouldOpen === isOpen) return;
+        if (shouldOpen) {
+          body.classList.remove('hidden');
+          header.classList.add('open');
+          if (EditorState.pixels) {
+            _cfgBaseW = EditorState.width;
+            _cfgBaseH = EditorState.height;
+            setActiveTool('canvas-size');
+          }
+        } else {
+          _closeCanvasSizePanel();
+          if (EditorState.activeTool === 'canvas-size') {
+            const dpr = window.devicePixelRatio || 1;
+            selCtx.clearRect(0, 0, selCanvas.width / dpr, selCanvas.height / dpr);
+            setActiveTool('pencil');
+          }
+        }
+      }
+
+      // Scrubber: click-and-drag left/right changes value; click without drag = text edit
+      function makeScrubber(input) {
+        let scrubStart = null, hasMoved = false;
+        input.addEventListener('pointerdown', e => {
+          scrubStart = { x: e.clientX, val: parseFloat(input.value) || 0 };
+          hasMoved = false;
+          input.setPointerCapture(e.pointerId);
+          e.preventDefault();
+        });
+        input.addEventListener('pointermove', e => {
+          if (!scrubStart) return;
+          const delta = Math.round((e.clientX - scrubStart.x) / 2);
+          if (Math.abs(delta) >= 1) {
+            hasMoved = true;
+            input.value = scrubStart.val + delta;
+            input.dispatchEvent(new Event('input'));
+          }
+        });
+        input.addEventListener('pointerup', () => {
+          if (!scrubStart) return;
+          const moved = hasMoved;
+          scrubStart = null;
+          if (!moved) {
+            input.style.cursor = 'text';
+            input.focus();
+            input.select();
+          }
+        });
+        input.addEventListener('pointercancel', () => { scrubStart = null; });
+        input.addEventListener('blur', () => { input.style.cursor = 'ew-resize'; });
+      }
+
+      // Attach scrubbers to all cfg inputs
       ['cfg-width','cfg-height','cfg-left','cfg-right','cfg-top','cfg-bottom'].forEach(id => {
-        document.getElementById(id).addEventListener('input', drawCanvasSizeGuides);
+        makeScrubber(document.getElementById(id));
       });
-      document.getElementById('btn-cfg-apply').addEventListener('click', applyCanvasSize);
-      document.getElementById('btn-cfg-cancel').addEventListener('click', cancelCanvasSize);
+
+      // Auto-sync: L or R → W = R - L; T or B → H = B - T; W → R = L + W; H → B = T + H
+      // Note: setting .value programmatically does NOT fire 'input', so no circular loops.
+      function _syncFromLR() {
+        const L = parseInt(document.getElementById('cfg-left').value)  || 0;
+        const R = parseInt(document.getElementById('cfg-right').value) || 0;
+        document.getElementById('cfg-width').value = Math.max(1, R - L);
+        drawCanvasSizeGuides();
+      }
+      function _syncFromTB() {
+        const T = parseInt(document.getElementById('cfg-top').value)    || 0;
+        const B = parseInt(document.getElementById('cfg-bottom').value) || 0;
+        document.getElementById('cfg-height').value = Math.max(1, B - T);
+        drawCanvasSizeGuides();
+      }
+      function _syncFromW() {
+        const L = parseInt(document.getElementById('cfg-left').value)  || 0;
+        const W = parseInt(document.getElementById('cfg-width').value) || 1;
+        document.getElementById('cfg-right').value = L + Math.max(1, W);
+        drawCanvasSizeGuides();
+      }
+      function _syncFromH() {
+        const T = parseInt(document.getElementById('cfg-top').value)    || 0;
+        const H = parseInt(document.getElementById('cfg-height').value) || 1;
+        document.getElementById('cfg-bottom').value = T + Math.max(1, H);
+        drawCanvasSizeGuides();
+      }
+      document.getElementById('cfg-left').addEventListener('input', _syncFromLR);
+      document.getElementById('cfg-right').addEventListener('input', _syncFromLR);
+      document.getElementById('cfg-top').addEventListener('input', _syncFromTB);
+      document.getElementById('cfg-bottom').addEventListener('input', _syncFromTB);
+      document.getElementById('cfg-width').addEventListener('input', _syncFromW);
+      document.getElementById('cfg-height').addEventListener('input', _syncFromH);
+
+      document.getElementById('canvasSizeHeader').addEventListener('click', () => toggleCanvasSizePanel());
+      document.getElementById('btn-cfg-apply').addEventListener('click', () => {
+        applyCanvasSize();
+        // After apply, new canvas size becomes the new base
+        _cfgBaseW = EditorState.width;
+        _cfgBaseH = EditorState.height;
+      });
+      document.getElementById('btn-cfg-restore').addEventListener('click', () => {
+        document.getElementById('cfg-left').value   = 0;
+        document.getElementById('cfg-right').value  = _cfgBaseW;
+        document.getElementById('cfg-top').value    = 0;
+        document.getElementById('cfg-bottom').value = _cfgBaseH;
+        document.getElementById('cfg-width').value  = _cfgBaseW;
+        document.getElementById('cfg-height').value = _cfgBaseH;
+        drawCanvasSizeGuides();
+      });
+
+      // Reference lines follow canvas scroll
+      document.getElementById('zoom-scroll-content').addEventListener('scroll', () => {
+        if (EditorState.activeTool === 'canvas-size') drawCanvasSizeGuides();
+      }, { passive: true });
 
       // ── 下载弹窗事件绑定 ───────────────────────────────────────────────────────
       document.getElementById('btn-download-open').addEventListener('click', openDownloadModal);
       document.getElementById('dl-btn-cancel').addEventListener('click', closeDownloadModal);
-      document.getElementById('dl-btn-home').addEventListener('click', () => {
-        closeDownloadModal();
-        goHome();
-      });
+      document.getElementById('btn-go-home').addEventListener('click', goHome);
       document.getElementById('dl-btn-download').addEventListener('click', () => {
         const scale = Math.max(1, Math.min(100, parseInt(document.getElementById('dl-scale-num').value) || 1));
         triggerDownload(scale);
@@ -4300,7 +4521,7 @@
             if (EditorState.selectionMask || EditorState.transformState) setActiveTool('move');
           }
           if (e.key === 's' || e.key === 'S') {
-            if (EditorState.pixels) setActiveTool('canvas-size');
+            if (EditorState.pixels) toggleCanvasSizePanel(true);
           }
         }
         // Enter → apply transform (if active)
@@ -4461,6 +4682,37 @@
           if (e.key === 'Escape') {
             closeHelpModal();
           }
+        });
+      })();
+
+      // ── Right-panel instant tooltip ───────────────────────────────────────────
+      (function() {
+        const tip     = document.getElementById('tool-tip');
+        const tipName = document.getElementById('tool-tip-name');
+        const tipDesc = document.getElementById('tool-tip-desc');
+        if (!tip) return;
+
+        document.querySelectorAll('.tool-btn[data-tip-zh]').forEach(btn => {
+          btn.addEventListener('mouseenter', () => {
+            const zh   = btn.dataset.tipZh  || '';
+            const en   = btn.dataset.tipEn  || '';
+            const key  = btn.dataset.tipKey || '';
+            const desc = btn.dataset.tipDesc || '';
+
+            tipName.innerHTML =
+              `${zh} <span class="tool-tip-en">${en}</span>` +
+              (key ? ` <span class="tool-tip-key">${key}</span>` : '');
+            tipDesc.textContent = desc;
+            tipDesc.style.display = desc ? '' : 'none';
+
+            tip.style.display = 'block';
+            const rect = btn.getBoundingClientRect();
+            const tipH = tip.offsetHeight;
+            const tipW = tip.offsetWidth;
+            tip.style.top  = Math.round(rect.top + rect.height / 2 - tipH / 2) + 'px';
+            tip.style.left = Math.round(rect.left - tipW - 8) + 'px';
+          });
+          btn.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
         });
       })();
 
@@ -4690,11 +4942,8 @@
       <div id="dl-size-info" style="font-size:11px; color:var(--text-muted); margin-top:6px;"></div>
     </div>
 
-    <!-- Action buttons: Home left, Cancel + Download right -->
-    <div style="display:flex; gap:8px; align-items:center;">
-      <button id="dl-btn-home" class="btn btn-ghost" title="返回 web_ui.html"
-              style="padding:6px 12px; font-size:13px;">🏠 返回主页</button>
-      <span style="flex:1;"></span>
+    <!-- Action buttons: Cancel left, Download right -->
+    <div style="display:flex; gap:8px; align-items:center; justify-content:flex-end;">
       <button id="dl-btn-cancel" class="btn btn-ghost" style="padding:6px 12px; font-size:13px;">取消</button>
       <button id="dl-btn-download" class="btn btn-primary"
               style="font-size:14px; padding:10px 20px; font-weight:700;">⬇ 下载</button>
