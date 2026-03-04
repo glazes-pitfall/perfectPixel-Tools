@@ -37,5 +37,10 @@ icons/NotForUse.zip
 icons/others/
 icons/icon64px_*.png
 
+# ── 开发工具 ──────────────────────────────────────────
+# Claude Code / GSD 开发规划文件（仅本地使用）
+.planning/
+CLAUDE.md
+
 # ── 日志 ──────────────────────────────────────────────
 *.log
