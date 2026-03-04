@@ -1,0 +1,25 @@
+/* ── Shared CSS Variables ─────────────────────────────────────────────── */
+:root {
+  --bg: #0f0f13;
+  --surface: #1a1a22;
+  --surface2: #22222e;
+  --border: #2e2e3e;
+  --accent: #7c6af7;
+  --accent-hover: #9080ff;
+  --text: #e8e6f0;
+  --text-muted: #7a7890;
+  --success: #4ade80;
+  --error: #f87171;
+  --warning: #fbbf24;
+  --radius: 10px;
+}
+
+/* ── Shared Button Styles ────────────────────────────────────────────── */
+.btn { padding: 8px 12px; border-radius: 7px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .2s, opacity .2s; white-space: nowrap; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 5px 9px; font-size: 12px; }
+.btn-ghost:hover { color: var(--text); border-color: var(--accent); }
