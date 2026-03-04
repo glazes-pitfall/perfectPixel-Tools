@@ -12,3 +12,12 @@ output/
 *.log
 
 .DS_Store
+
+__pycache__/
+*.pyc
+
+.playwright-mcp/
+
+# Test/temp images
+output.png
+output_8x.png
