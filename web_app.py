@@ -17,6 +17,22 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 32 * 1024 * 1024  # 32 MB
 
 
+# ── Shared helpers ─────────────────────────────────────────────────────────
+
+def _decode_b64_image(b64_str):
+    """Decode base64 string to RGB numpy array."""
+    data = base64.b64decode(b64_str)
+    arr = np.frombuffer(data, dtype=np.uint8)
+    bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+    if bgr is None:
+        raise ValueError("Cannot decode image data")
+    return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+
+def _make_error(msg, code=400):
+    """Uniform error response."""
+    return jsonify({"error": msg}), code
+
+
 # ── Palette file parsers ────────────────────────────────────────────────────
 
 def parse_gpl(text):
@@ -334,13 +350,6 @@ def encode_png_b64(rgb_array):
     return base64.b64encode(buf).decode("utf-8")
 
 
-def b64_to_rgb(b64_str):
-    data = base64.b64decode(b64_str)
-    arr = np.frombuffer(data, dtype=np.uint8)
-    bgr = cv2.imdecode(arr, cv2.IMREAD_COLOR)
-    return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-
-
 # ── Flask routes ────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -352,6 +361,10 @@ def index():
 def editor():
     return send_file(os.path.join(os.path.dirname(__file__), "editor.html"))
 
+
+@app.route("/editor/<path:filename>")
+def editor_static(filename):
+    return send_file(os.path.join(os.path.dirname(__file__), "editor", filename))
 
 
 @app.route("/icons/<path:filename>")
@@ -367,7 +380,7 @@ def output_png():
 @app.route("/api/process", methods=["POST"])
 def process():
     if "image" not in request.files:
-        return jsonify({"error": "No image uploaded"}), 400
+        return _make_error("No image uploaded")
 
     file = request.files["image"]
     sample_method = request.form.get("sample_method", "center")
@@ -378,7 +391,7 @@ def process():
     file_bytes = np.frombuffer(file.read(), dtype=np.uint8)
     bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
     if bgr is None:
-        return jsonify({"error": "Cannot decode image"}), 400
+        return _make_error("Cannot decode image")
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
     grid_w, grid_h, out = get_perfect_pixel(
@@ -390,7 +403,7 @@ def process():
     )
 
     if grid_w is None or grid_h is None:
-        return jsonify({"error": "Grid detection failed. Try a clearer pixel art image."}), 422
+        return _make_error("Grid detection failed. Try a clearer pixel art image.", 422)
 
     out_b64 = encode_png_b64(out)
     scaled = cv2.resize(
@@ -418,7 +431,7 @@ def api_generate_palette():
     min_region_pct = float(request.form.get("min_region_pct", 1.0))
 
     if not image_b64:
-        return jsonify({"error": "No image data"}), 400
+        return _make_error("No image data")
 
     try:
         # Decode with RGBA to avoid transparent pixels being composited to black
@@ -429,10 +442,10 @@ def api_generate_palette():
         alpha_mask = rgba_arr[:, :, 3] >= 128
         opaque_pixels = rgba_arr[:, :, :3][alpha_mask]   # (N, 3)
         if opaque_pixels.shape[0] == 0:
-            return jsonify({"error": "No opaque pixels to quantize"}), 400
+            return _make_error("No opaque pixels to quantize")
         rgb = opaque_pixels.reshape(-1, 1, 3)   # (N, 1, 3) strip — quantizers work on pixel color, not layout
     except Exception as e:
-        return jsonify({"error": f"Cannot decode image: {e}"}), 400
+        return _make_error(f"Cannot decode image: {e}")
 
     try:
         if algorithm == "mediancut":
@@ -442,7 +455,7 @@ def api_generate_palette():
         else:  # fastoctree (default)
             palette = _pillow_quantize(rgb, n_colors, Image.Quantize.FASTOCTREE)
     except Exception as e:
-        return jsonify({"error": f"Quantization failed: {e}"}), 500
+        return _make_error(f"Quantization failed: {e}", 500)
 
     return jsonify({"palette": palette, "count": len(palette)})
 
@@ -456,16 +469,16 @@ def api_apply_palette():
     export_scale = int(request.form.get("scale", 8))
 
     if not image_b64 or not palette_json:
-        return jsonify({"error": "Missing image or palette"}), 400
+        return _make_error("Missing image or palette")
 
     try:
-        rgb = b64_to_rgb(image_b64)
+        rgb = _decode_b64_image(image_b64)
         palette = json.loads(palette_json)
     except Exception as e:
-        return jsonify({"error": f"Invalid input: {e}"}), 400
+        return _make_error(f"Invalid input: {e}")
 
     if not palette:
-        return jsonify({"error": "Empty palette"}), 400
+        return _make_error("Empty palette")
 
     if mode == "swap":
         result = apply_palette_swap(rgb, palette)
@@ -491,7 +504,7 @@ def api_apply_palette():
 def api_parse_palette():
     """Parse an uploaded palette file (.act, .gpl, .pal, .png)."""
     if "file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+        return _make_error("No file uploaded")
 
     f = request.files["file"]
     filename = f.filename.lower()
@@ -513,12 +526,12 @@ def api_parse_palette():
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
             palette = parse_png_palette(rgb)
         else:
-            return jsonify({"error": "Unsupported file format"}), 400
+            return _make_error("Unsupported file format")
     except Exception as e:
-        return jsonify({"error": f"Parse error: {e}"}), 400
+        return _make_error(f"Parse error: {e}")
 
     if not palette:
-        return jsonify({"error": "No colors found in file"}), 400
+        return _make_error("No colors found in file")
 
     return jsonify({"palette": palette, "name": name})
 
@@ -531,12 +544,12 @@ def api_export_palette():
     name = request.form.get("name", "Custom Palette")
 
     if not palette_json:
-        return jsonify({"error": "No palette data"}), 400
+        return _make_error("No palette data")
 
     try:
         palette = json.loads(palette_json)
     except Exception:
-        return jsonify({"error": "Invalid palette JSON"}), 400
+        return _make_error("Invalid palette JSON")
 
     if fmt == "act":
         data = export_act(palette)

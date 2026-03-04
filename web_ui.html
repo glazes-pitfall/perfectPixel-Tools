@@ -4,23 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Perfect Pixel — 本地版</title>
+<link rel="stylesheet" href="editor/shared.css">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #0f0f13;
-    --surface: #1a1a22;
-    --surface2: #22222e;
-    --border: #2e2e3e;
-    --accent: #7c6af7;
-    --accent-hover: #9080ff;
-    --text: #e8e6f0;
-    --text-muted: #7a7890;
-    --success: #4ade80;
-    --error: #f87171;
-    --warning: #fbbf24;
-    --radius: 10px;
-  }
 
   /* Fix body to viewport so panels scroll independently */
   body {
@@ -91,20 +77,6 @@
 
   .checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
   .checkbox-row input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; cursor: pointer; }
-
-  .btn {
-    padding: 8px 12px; border-radius: 7px; border: none; font-size: 13px;
-    font-weight: 600; cursor: pointer; transition: background .2s, opacity .2s; white-space: nowrap;
-  }
-  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
-  .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
-  .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
-  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-  .btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
-  .btn-secondary:disabled { opacity: .4; cursor: not-allowed; }
-  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 5px 9px; font-size: 12px; }
-  .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
-
 
 
   .divider { border: none; border-top: 1px solid var(--border); }
@@ -255,6 +227,7 @@
 </div>
 
 
+<script src="editor/js/color-utils.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════
 //  State
@@ -274,15 +247,6 @@ function setStatus(msg, type = "") {
 function setLoading(on) {
   $("statusBar").classList.toggle("loading", on);
   $("processBtn").disabled = on || !selectedFile;
-}
-function rgbToHex(r, g, b) {
-  return [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("").toUpperCase();
-}
-function hexToRgb(hex) {
-  hex = hex.replace("#", "");
-  if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
-  const n = parseInt(hex, 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -396,7 +360,6 @@ $("processBtn").addEventListener("click", async () => {
   }
 });
 
-// <!-- palette section removed in Phase 4 Plan 02 -->
 </script>
 </body>
 </html>
