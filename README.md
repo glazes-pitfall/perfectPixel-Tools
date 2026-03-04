@@ -100,6 +100,8 @@ w, h, out = get_perfect_pixel(rgb)
 
 完整的浏览器内像素编辑器，单文件 `editor.html`（~5000 行），无需构建工具。
 
+<img src="assets/editor-screenshot.png" width="100%" />
+
 ### 工具集
 
 | 工具 | 快捷键 | 说明 |
